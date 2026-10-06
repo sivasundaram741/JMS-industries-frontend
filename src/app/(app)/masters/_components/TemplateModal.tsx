@@ -1,0 +1,139 @@
+'use client';
+// A manufactured (FG) item: stock by warehouse, and its standard operations and materials that fill new work orders.
+// Editable with masters:edit → PUT /items/:id/template
+import { useEffect, useState } from 'react';
+import { Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { put } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
+import { useApi } from '@/lib/hooks';
+import { inr, num } from '@/lib/format';
+import { Button, Loading, Modal, StatStrip, useToast } from '@/components/ui';
+
+interface Op { name: string; machineId: string; setupMin: string; runMin: string }
+interface Mat { itemId: string; qtyPer: string }
+const WH = [['RM', 'RM Store'], ['WIP', 'WIP'], ['QC', 'QC Hold'], ['FG', 'FG Store']] as const;
+
+export function TemplateModal({ itemId, open, onClose, onEdit }: { itemId: number | null; open: boolean; onClose: () => void; onEdit: (item: any) => void }) {
+  const { can } = useAuth();
+  const toast = useToast();
+  const editable = can('masters', 'edit');
+  const { data: it, mutate } = useApi<any>(open && itemId ? `/items/${itemId}` : null);
+  const { data: machines } = useApi<any[]>(open ? '/machines' : null);
+  const { data: mats } = useApi<any>(open ? '/items?type=RM,BOUGHT,CONSUMABLE&pageSize=200' : null);
+  const [ops, setOps] = useState<Op[]>([]);
+  const [materials, setMaterials] = useState<Mat[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (!it || it.id !== itemId) return;
+    setOps(it.operations.map((o: any) => ({ name: o.name, machineId: o.machineId ? String(o.machineId) : '', setupMin: String(o.setupMin), runMin: String(o.runMin) })));
+    setMaterials(it.materials.map((m: any) => ({ itemId: String(m.materialItemId), qtyPer: String(m.qtyPer) })));
+    setDirty(false);
+  }, [it, itemId]);
+
+  const setOp = (i: number, p: Partial<Op>) => { setOps((x) => x.map((o, j) => (j === i ? { ...o, ...p } : o))); setDirty(true); };
+  const setMat = (i: number, p: Partial<Mat>) => { setMaterials((x) => x.map((m, j) => (j === i ? { ...m, ...p } : m))); setDirty(true); };
+  const matItems: any[] = mats?.rows || [];
+  const matCost = materials.reduce((a, m) => a + (Number(m.qtyPer) || 0) * (matItems.find((x) => String(x.id) === m.itemId)?.stdCost || 0), 0);
+  const runMin = ops.reduce((a, o) => a + (Number(o.runMin) || 0), 0);
+  const valid = ops.every((o) => o.name.trim()) && materials.every((m) => m.itemId && Number(m.qtyPer) > 0);
+
+  async function save() {
+    setBusy(true);
+    try {
+      await put(`/items/${itemId}/template`, {
+        operations: ops.map((o) => ({ name: o.name.trim(), machineId: o.machineId ? Number(o.machineId) : null, setupMin: Number(o.setupMin) || 0, runMin: Number(o.runMin) || 0 })),
+        materials: materials.map((m) => ({ itemId: Number(m.itemId), qtyPer: Number(m.qtyPer) })),
+      });
+      toast.ok(`${it.code} operations and materials saved · new work orders use them`);
+      await mutate();
+      setDirty(false);
+    } catch (e) { toast.err(e); } finally { setBusy(false); }
+  }
+
+  const stockQty = (wh: string) => it?.stock.find((s: any) => s.warehouse === wh)?.qty || 0;
+  return (
+    <Modal open={open} onClose={onClose} wide title={it ? `${it.name}` : 'Item'} sub={it ? `${it.code} · finished good · HSN ${it.hsn || '—'} · std cost ${inr(it.stdCost)} · sale ${inr(it.salePrice)}` : undefined}
+      footer={<>
+        {editable && it ? <Button icon={Pencil} onClick={() => onEdit(it)}>Edit item details</Button> : null}
+        <div className="spacer" />
+        <Button onClick={onClose}>{dirty ? 'Discard' : 'Close'}</Button>
+        {editable ? <Button variant="primary" icon={Save} loading={busy} disabled={!dirty || !valid} onClick={save}>Save operations & materials</Button> : null}
+      </>}>
+      {!it || it.id !== itemId ? <Loading rows={6} /> : (
+        <div className="stack" style={{ gap: 18 }}>
+          <StatStrip items={[...WH.map(([k, l]) => ({ label: l, value: `${num(stockQty(k))} ${it.uom}`, color: k === 'FG' && it.reorderLevel && stockQty('FG') < it.reorderLevel ? ('danger' as const) : undefined })), { label: 'Reorder level', value: it.reorderLevel ? num(it.reorderLevel) : '—' }]} />
+
+          <div>
+            <div className="row between" style={{ marginBottom: 8 }}>
+              <div><div className="h4">Standard operations</div><div className="text-xs muted">In routing order · each becomes an operation on new work orders</div></div>
+              <span className="text-xs muted">{num(runMin, 2)} min run per piece</span>
+            </div>
+            <div className="card lines-table" style={{ boxShadow: 'none' }}>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead><tr><th style={{ width: 44 }}>Seq</th><th>Operation</th><th>Machine</th><th className="r">Setup min</th><th className="r">Run min / pc</th><th /></tr></thead>
+                  <tbody>
+                    {ops.map((o, i) => (
+                      <tr key={i}>
+                        <td className="muted num">{(i + 1) * 10}</td>
+                        <td><input className="input" aria-label={`Operation ${i + 1} name`} value={o.name} disabled={!editable} placeholder="e.g. CNC turning" onChange={(e) => setOp(i, { name: e.target.value })} /></td>
+                        <td>
+                          <select className="select" aria-label={`Machine for operation ${i + 1}`} value={o.machineId} disabled={!editable} onChange={(e) => setOp(i, { machineId: e.target.value })}>
+                            <option value="">Any machine</option>
+                            {(machines || []).map((m) => <option key={m.id} value={m.id}>{m.code} · {m.name}</option>)}
+                          </select>
+                        </td>
+                        <td className="r"><input className="input num" style={{ width: 90, textAlign: 'right' }} aria-label="Setup minutes" type="number" min={0} step="any" value={o.setupMin} disabled={!editable} onChange={(e) => setOp(i, { setupMin: e.target.value })} /></td>
+                        <td className="r"><input className="input num" style={{ width: 90, textAlign: 'right' }} aria-label="Run minutes per piece" type="number" min={0} step="any" value={o.runMin} disabled={!editable} onChange={(e) => setOp(i, { runMin: e.target.value })} /></td>
+                        <td className="r">{editable ? <button type="button" className="icon-btn" aria-label="Remove operation" onClick={() => { setOps((x) => x.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 size={16} /></button> : null}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!ops.length ? <div className="empty text-sm" style={{ padding: 16 }}>No operations yet</div> : null}
+              </div>
+              {editable ? <div className="tfoot"><Button size="sm" icon={Plus} onClick={() => { setOps((x) => [...x, { name: '', machineId: '', setupMin: '0', runMin: '0' }]); setDirty(true); }}>Add operation</Button></div> : null}
+            </div>
+          </div>
+
+          <div>
+            <div className="row between" style={{ marginBottom: 8 }}>
+              <div><div className="h4">Materials per piece</div><div className="text-xs muted">Issued from RM Store to the work order, oldest lot first</div></div>
+              <span className="text-xs muted">Material cost {inr(matCost, 2)} / pc</span>
+            </div>
+            <div className="card lines-table" style={{ boxShadow: 'none' }}>
+              <div className="table-wrap">
+                <table className="tbl">
+                  <thead><tr><th>Material</th><th className="r">Qty per piece</th><th>Unit</th><th className="r">Cost / pc</th><th /></tr></thead>
+                  <tbody>
+                    {materials.map((m, i) => {
+                      const mi = matItems.find((x) => String(x.id) === m.itemId);
+                      return (
+                        <tr key={i}>
+                          <td>
+                            <select className="select" aria-label={`Material ${i + 1}`} value={m.itemId} disabled={!editable} onChange={(e) => setMat(i, { itemId: e.target.value })}>
+                              <option value="">Choose a material…</option>
+                              {matItems.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}
+                            </select>
+                          </td>
+                          <td className="r"><input className="input num" style={{ width: 110, textAlign: 'right' }} aria-label="Quantity per piece" type="number" min={0} step="any" value={m.qtyPer} disabled={!editable} onChange={(e) => setMat(i, { qtyPer: e.target.value })} /></td>
+                          <td className="muted">{mi?.uom || '—'}</td>
+                          <td className="r num">{mi ? inr((Number(m.qtyPer) || 0) * mi.stdCost, 2) : '—'}</td>
+                          <td className="r">{editable ? <button type="button" className="icon-btn" aria-label="Remove material" onClick={() => { setMaterials((x) => x.filter((_, j) => j !== i)); setDirty(true); }}><Trash2 size={16} /></button> : null}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {!materials.length ? <div className="empty text-sm" style={{ padding: 16 }}>No materials yet</div> : null}
+              </div>
+              {editable ? <div className="tfoot"><Button size="sm" icon={Plus} onClick={() => { setMaterials((x) => [...x, { itemId: '', qtyPer: '' }]); setDirty(true); }}>Add material</Button></div> : null}
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
