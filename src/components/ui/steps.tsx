@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import { TenantLink as Link } from './TenantLink';
 import { Check, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Tone } from '@/lib/status';

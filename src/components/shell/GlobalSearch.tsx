@@ -1,8 +1,9 @@
 'use client';
 // Search work orders, customer orders, purchase orders, bills, employees, documents and customers from the top bar (Ctrl K)
-import Link from 'next/link';
+import { TenantLink as Link } from '@/components/ui/TenantLink';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { useTenantHref } from '@/lib/hooks';
 import { Search } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -13,6 +14,7 @@ type Hit = { group: string; title: string; sub: string; href: string };
 export function GlobalSearch() {
   const { can } = useAuth();
   const router = useRouter();
+  const tenantHref = useTenantHref();
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);
@@ -42,7 +44,7 @@ export function GlobalSearch() {
     return () => { live = false; };
   }, [term, can]);
 
-  const go = (h?: Hit) => { if (!h) return; setOpen(false); setQ(''); router.push(h.href); };
+  const go = (h?: Hit) => { if (!h) return; setOpen(false); setQ(''); router.push(tenantHref(h.href)); };
   let lastGroup = '';
   return (
     <div className="search">

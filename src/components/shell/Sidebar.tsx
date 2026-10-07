@@ -2,8 +2,9 @@
 // Sidebar: Overview plus one drawer per master module. The drawer holding the current page opens itself; the
 // others remember whether you left them open. Menus the signed-in role cannot view are hidden.
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useTenantHref } from '@/lib/hooks';
 import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Factory, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { OVERVIEW, SECTIONS, activeItem, type NavItem } from '@/lib/nav';
@@ -12,7 +13,11 @@ import { useApi } from '@/lib/hooks';
 const KEY = 'kcerp-navopen';
 
 export function Sidebar({ branch }: { branch?: string }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const { tenant } = useParams<{ tenant?: string }>();
+  const tenantHref = useTenantHref();
+  // Strip the tenant prefix so activeItem matches against bare paths like /sales/orders
+  const pathname = tenant ? rawPathname.replace(`/${tenant}`, '') || '/' : rawPathname;
   const { user, can, logout } = useAuth();
   const active = activeItem(pathname);
   const visible = (it: NavItem) => can(it.module, 'view');
@@ -36,7 +41,7 @@ export function Sidebar({ branch }: { branch?: string }) {
   const toggleAll = () => save(Object.fromEntries(sections.map((s) => [s.key, !allOpen || (active?.section.key === s.key)])));
 
   const item = (it: NavItem) => (
-    <Link key={it.key} href={it.href} className={'nav-item' + (active?.item.key === it.key ? ' active' : '')} aria-current={active?.item.key === it.key ? 'page' : undefined}>
+    <Link key={it.key} href={tenantHref(it.href)} className={'nav-item' + (active?.item.key === it.key ? ' active' : '')} aria-current={active?.item.key === it.key ? 'page' : undefined}>
       <it.icon size={18} />
       <span className="truncate">{it.label}</span>
       {it.key === 'approvals' && approvals?.total ? <span className="count">{approvals.total}</span> : null}
@@ -69,7 +74,7 @@ export function Sidebar({ branch }: { branch?: string }) {
           const isOpen = !!open[s.key];
           return (
             <div key={s.key} className="nav-section">
-              <button type="button" className="nav-head" aria-expanded={isOpen} onClick={() => save({ ...open, [s.key]: !isOpen })}>
+              <button type="button" className="nav-head" aria-expanded={isOpen} title={s.desc} onClick={() => save({ ...open, [s.key]: !isOpen })}>
                 {s.stage ? <span className={`stage-dot s-${s.tone}`}>{s.stage}</span> : <s.icon size={18} className="secondary" />}
                 <span>{s.label} {s.sub ? <span className="sub">{s.sub}</span> : null}</span>
                 <ChevronRight size={16} className="chev" />

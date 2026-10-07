@@ -1,7 +1,7 @@
 'use client';
 // Signed-in user, their company and what their role may do
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ApiError, api, tokenStore } from './api';
+import { ApiError, api, tokenStore, tenantStore } from './api';
 
 export type Action = 'view' | 'create' | 'edit' | 'delete' | 'approve';
 export interface Profile {
@@ -14,7 +14,7 @@ export interface Profile {
 interface AuthState {
   user: Profile | null;
   status: 'loading' | 'signed-in' | 'signed-out';
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, tenantSlug?: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
   can: (module: string, action?: Action) => boolean;
@@ -45,7 +45,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('kcerp:signed-out', out);
   }, [refresh]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, tenantSlug?: string) => {
+    // If a slug is provided (from URL), store it so api() can prefix all calls with /{slug}
+    if (tenantSlug) tenantStore.set(tenantSlug);
     const r = await api<{ token: string; user: Profile }>('/auth/login', { method: 'POST', body: { email, password } });
     tokenStore.set(r.token);
     setUser(r.user);
@@ -54,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     tokenStore.clear();
+    tenantStore.clear();
     setUser(null);
     setStatus('signed-out');
   }, []);

@@ -31,6 +31,7 @@ export function NoteForm({ kind }: { kind: NoteKind }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<'' | 'draft' | 'submit'>('');
+  const [tried, setTried] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
 
   useEffect(() => { if (reasons.length && !f.reason) setF((x) => ({ ...x, reason: reasons[0] })); }, [reasons]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -67,7 +68,14 @@ export function NoteForm({ kind }: { kind: NoteKind }) {
     return { taxable, tax, total: Math.round(taxable + tax), units };
   }, [chosen]);
 
+  const validationMsg = tried && (!f.partyId ? `Select a ${c.party.toLowerCase()} to continue.`
+    : !f.reason ? 'Select a return reason to continue.'
+    : !chosen.length ? 'Tick at least one product to return.'
+    : null);
+
   async function save(submit: boolean) {
+    setTried(true);
+    if (!f.partyId || !f.reason || !chosen.length || errors.length > 0) return;
     setBusy(submit ? 'submit' : 'draft');
     try {
       const n = await post(c.api, {
@@ -80,7 +88,6 @@ export function NoteForm({ kind }: { kind: NoteKind }) {
   }
 
   const party = (parties?.rows || []).find((p: any) => String(p.id) === f.partyId);
-  const ready = !!f.partyId && !!f.reason && chosen.length > 0 && !errors.length && !busy;
 
   return (
     <>
@@ -89,9 +96,10 @@ export function NoteForm({ kind }: { kind: NoteKind }) {
         title={`New ${c.label.toLowerCase()}`} sub="Tick the products coming back · each line has its own quantity, reason and condition"
         actions={<>
           <Button onClick={() => router.push(c.href)}>Cancel</Button>
-          <Button icon={Save} loading={busy === 'draft'} disabled={!ready} onClick={() => save(false)}>Save draft</Button>
-          <Button variant="primary" icon={Send} loading={busy === 'submit'} disabled={!ready} onClick={() => save(true)}>Create {c.label.toLowerCase()}</Button>
+          <Button icon={Save} loading={busy === 'draft'} disabled={!!busy} onClick={() => save(false)}>Save draft</Button>
+          <Button variant="primary" icon={Send} loading={busy === 'submit'} disabled={!!busy} onClick={() => save(true)}>Create {c.label.toLowerCase()}</Button>
         </>} />
+      {validationMsg ? <Alert tone="warning">{validationMsg}</Alert> : null}
 
       <div className="grid main-side">
         <Card title="Return against" sub={`Pick the original ${c.source.toLowerCase()} to load its products`}>

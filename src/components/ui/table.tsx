@@ -1,6 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTenantHref } from '@/lib/hooks';
 import { EmptyState, Loading } from './layout';
 
 export interface Column<T> { key: string; header: React.ReactNode; align?: 'left' | 'right' | 'center'; width?: number | string; render?: (row: T, i: number) => React.ReactNode }
@@ -9,10 +10,11 @@ export function DataTable<T extends Record<string, any>>({ columns, rows, rowHre
   columns: Column<T>[]; rows?: T[] | null; rowHref?: (row: T) => string | null | undefined; onRowClick?: (row: T) => void; loading?: boolean; empty?: React.ReactNode; footer?: React.ReactNode; toolbar?: React.ReactNode; rowKey?: string;
 }) {
   const router = useRouter();
+  const tenantHref = useTenantHref();
   const click = (r: T) => {
     if (onRowClick) return onRowClick(r);
     const h = rowHref?.(r);
-    if (h) router.push(h);
+    if (h) router.push(tenantHref(h));
   };
   const clickable = !!(onRowClick || rowHref);
   return (

@@ -1,7 +1,8 @@
 'use client';
-import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { TenantLink as Link } from './TenantLink';
+import { useTenantHref } from '@/lib/hooks';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, ChevronRight, CircleAlert, Info, TriangleAlert, CircleCheck, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { Tone } from '@/lib/status';
@@ -56,6 +57,7 @@ export function StatStrip({ items }: { items: Array<{ label: string; value: Reac
 
 export function PageHeader({ crumbs, title, sub, tags, actions, back }: { crumbs?: Array<{ label: string; href?: string }>; title: React.ReactNode; sub?: React.ReactNode; tags?: React.ReactNode; actions?: React.ReactNode; back?: string | boolean }) {
   const router = useRouter();
+  const tenantHref = useTenantHref();
   useEffect(() => {
     if (typeof title === 'string') document.title = title + ' · KCERP';
   }, [title]);
@@ -75,7 +77,7 @@ export function PageHeader({ crumbs, title, sub, tags, actions, back }: { crumbs
         <div style={{ minWidth: 0 }}>
           <div className="title">
             {back ? (
-              <button className="back" aria-label="Back" onClick={() => (typeof back === 'string' ? router.push(back) : router.back())}><ArrowLeft size={16} /></button>
+              <button className="back" aria-label="Back" onClick={() => (typeof back === 'string' ? router.push(tenantHref(back)) : router.back())}><ArrowLeft size={16} /></button>
             ) : null}
             <h1>{title}</h1>
             {tags}

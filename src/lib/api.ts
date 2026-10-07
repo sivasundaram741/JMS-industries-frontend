@@ -1,6 +1,7 @@
 // API client for the KCERP API (apps/api). Every call sends the signed-in user's token; a 401 signs the user out.
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
 const TOKEN_KEY = 'kcerp-token';
+const TENANT_KEY = 'kcerp-tenant';
 
 export const tokenStore = {
   get(): string | null {
@@ -14,6 +15,19 @@ export const tokenStore = {
   },
 };
 
+// Stores the tenant slug so every API call is prefixed with /{slug}
+export const tenantStore = {
+  get(): string | null {
+    try { return localStorage.getItem(TENANT_KEY); } catch { return null; }
+  },
+  set(slug: string) {
+    try { localStorage.setItem(TENANT_KEY, slug); } catch {}
+  },
+  clear() {
+    try { localStorage.removeItem(TENANT_KEY); } catch {}
+  },
+};
+
 export class ApiError extends Error {
   constructor(public status: number, message: string, public details?: unknown) {
     super(message);
@@ -22,9 +36,16 @@ export class ApiError extends Error {
 
 export async function api<T = any>(path: string, opts: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
   const token = tokenStore.get();
+  // Prefer the tenant slug embedded in the current URL (window.location) over the stored value.
+  // This prevents cross-tenant data leaks when a user navigates to a different org's URL mid-session.
+  const urlSlug = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : null;
+  const stored = tenantStore.get();
+  const slug = (urlSlug && urlSlug !== 'login' && urlSlug !== 'platform' && !urlSlug.startsWith('_')) ? urlSlug : stored;
+  const needsPrefix = slug && !path.startsWith('/platform') && !path.startsWith('/health');
+  const fullPath = needsPrefix ? `/${slug}${path}` : path;
   let res: Response;
   try {
-    res = await fetch(API_URL + path, {
+    res = await fetch(API_URL + fullPath, {
       method: opts.method || 'GET',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
       body: opts.body === undefined ? undefined : JSON.stringify(opts.body),

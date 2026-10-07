@@ -1,7 +1,8 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { tenantStore } from '@/lib/api';
 import { Alert, ButtonLink, PageHeader, Spinner } from '@/components/ui';
 import { activeItem } from '@/lib/nav';
 import { Sidebar } from './Sidebar';
@@ -9,13 +10,31 @@ import { Topbar } from './Topbar';
 import { StageRibbon } from './StageRibbon';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { status, user, can } = useAuth();
+  const { status, user, can, logout } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const { tenant } = (useParams<{ tenant?: string }>() || {}) as { tenant?: string };
+  const pathname = tenant ? rawPathname.replace(`/${tenant}`, '') || '/' : rawPathname;
   const [branch, setBranch] = useState('');
+
+  // Tenant in URL changed mid-session → log out immediately, regardless of auth state,
+  // then land on the new tenant's login page.
   useEffect(() => {
-    if (status === 'signed-out') router.replace('/login?next=' + encodeURIComponent(pathname));
-  }, [status, pathname, router]);
+    if (status === 'loading') return;
+    const stored = tenantStore.get();
+    if (tenant && stored && tenant !== stored) {
+      logout();
+      router.replace(`/${tenant}/login`);
+    }
+  }, [tenant, status, logout, router]);
+
+  useEffect(() => {
+    if (status === 'signed-out') {
+      const stored = tenantStore.get();
+      const slug = tenant || stored;
+      router.replace(slug ? `/${slug}/login` : '/login');
+    }
+  }, [status, router, tenant]);
   useEffect(() => {
     if (user && !branch) setBranch(user.branches.find((b) => b.isMain)?.name || user.branches[0]?.name || '');
   }, [user, branch]);

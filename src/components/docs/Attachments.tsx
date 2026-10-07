@@ -1,7 +1,7 @@
 'use client';
 // Attachments card for any detail page: files linked to the record, what its document rule still needs, and Attach.
 // Everything here is also listed in Overview · Document Tracking.
-import Link from 'next/link';
+import { TenantLink as Link } from '@/components/ui/TenantLink';
 import { useState } from 'react';
 import { Download, File, FileArchive, FileImage, FileSpreadsheet, FileText, Paperclip, TriangleAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';

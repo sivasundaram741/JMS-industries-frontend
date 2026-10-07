@@ -1,11 +1,13 @@
 'use client';
 // Numbered stage ribbon shown on every page: Sales → Purchase → Warehouse → Production → Quality → Dispatch → Finance
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
+import { TenantLink as Link } from '../ui/TenantLink';
 import { STAGE_SECTIONS, activeItem } from '@/lib/nav';
 
 export function StageRibbon() {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const { tenant } = (useParams<{ tenant?: string }>() || {}) as { tenant?: string };
+  const pathname = tenant ? rawPathname.replace(`/${tenant}`, '') || '/' : rawPathname;
   const act = activeItem(pathname)?.section.key;
   return (
     <nav className="ribbon" aria-label="Manufacturing flow">

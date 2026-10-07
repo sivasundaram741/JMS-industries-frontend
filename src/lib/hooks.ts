@@ -1,7 +1,21 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import useSWR, { SWRConfiguration } from 'swr';
-import { fetcher } from './api';
+import { fetcher, tenantStore } from './api';
+
+/** Returns a function that prefixes any absolute path with /{tenantSlug}. */
+export function useTenantHref(): (path: string) => string {
+  const params = useParams<{ tenant?: string }>();
+  const slug = params?.tenant || tenantStore.get() || '';
+  return useCallback((path: string) => slug && path.startsWith('/') ? `/${slug}${path}` : path, [slug]);
+}
+
+/** Returns the current tenant slug from the URL params or localStorage. */
+export function useTenantSlug(): string {
+  const params = useParams<{ tenant?: string }>();
+  return params?.tenant || tenantStore.get() || '';
+}
 
 // GET an API path with caching and revalidation; pass null to wait
 export function useApi<T = any>(path: string | null, config?: SWRConfiguration) {
