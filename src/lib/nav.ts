@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard, Activity, CircleCheck, ShoppingCart, Contact, Receipt, Truck, Building2, Warehouse, PackagePlus, Layers,
   ClipboardList, Factory, ClipboardCheck, ShieldCheck, Send, Landmark, Database, Users, ChartColumn, FolderOpen, FileText,
-  FileMinus, Undo2, Barcode, FilePlus2, FileX2, IdCard, Settings,
+  FileMinus, Undo2, Barcode, FilePlus2, FileX2, IdCard, Settings, PenLine, BarChart3,
 } from 'lucide-react';
 import type { Tone } from './status';
 
@@ -62,14 +62,22 @@ export const SECTIONS: NavSection[] = [
     { key: 'billing', label: 'Sales Invoices', href: '/finance/invoices', icon: FilePlus2, module: 'billing', alt: ['finance', 'creditinv'] },
     { key: 'creditinv', label: 'Credit Invoices', href: '/finance/credit-notes', icon: FileX2, module: 'creditinv' },
   ] },
+  { key: 'entries', label: 'Entries', icon: PenLine,
+    desc: 'Log daily production output — select a work order, operation and record pieces made', items: [
+    { key: 'entries-prod', label: 'Production Log', href: '/entries/production', icon: PenLine, module: 'wo' },
+  ] },
+  { key: 'analytics', label: 'Analytics', icon: BarChart3,
+    desc: 'Production trends, order pipeline, scrap rates and key performance metrics', items: [
+    { key: 'analytics', label: 'Production & Orders', href: '/analytics', icon: BarChart3, module: 'reports' },
+    { key: 'reports', label: 'Reports', href: '/reports', icon: ChartColumn, module: 'reports' },
+  ] },
   { key: 'masters', label: 'People & Masters', icon: Users,
     desc: 'Manage employees, payroll, items, customers, vendors and machines', items: [
     { key: 'hr', label: 'HR & Payroll', href: '/hr', icon: IdCard, module: 'hr' },
     { key: 'masters', label: 'Masters', href: '/masters', icon: Database, module: 'masters', alt: ['hr'] },
   ] },
-  { key: 'admin', label: 'Insights & Admin', icon: ChartColumn,
-    desc: 'Reports, dashboards, user roles and company settings', items: [
-    { key: 'reports', label: 'Reports & Analytics', href: '/reports', icon: ChartColumn, module: 'reports' },
+  { key: 'admin', label: 'Admin', icon: Settings,
+    desc: 'User roles, permissions and company settings', items: [
     { key: 'settings', label: 'Settings', href: '/settings', icon: Settings, module: 'settings' },
   ] },
 ];

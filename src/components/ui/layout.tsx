@@ -10,7 +10,7 @@ import { IconTile } from './basic';
 
 export function Card({ title, sub, right, icon, children, className, bodyClass, pad = true, id }: { title?: React.ReactNode; sub?: React.ReactNode; right?: React.ReactNode; icon?: LucideIcon; children?: React.ReactNode; className?: string; bodyClass?: string; pad?: boolean; id?: string }) {
   return (
-    <section className={'card ' + (className || '')} id={id}>
+    <div className={'card ' + (className || '')} id={id}>
       {title || right ? (
         <div className="card-head">
           {icon ? <IconTile icon={icon} tone="info" size={28} /> : null}
@@ -22,7 +22,7 @@ export function Card({ title, sub, right, icon, children, className, bodyClass, 
         </div>
       ) : null}
       {pad ? <div className={'card-body ' + (bodyClass || '')}>{children}</div> : children}
-    </section>
+    </div>
   );
 }
 
@@ -62,12 +62,12 @@ export function PageHeader({ crumbs, title, sub, tags, actions, back }: { crumbs
     if (typeof title === 'string') document.title = title + ' · KCERP';
   }, [title]);
   return (
-    <div className="stack tight" style={{ gap: 6 }}>
+    <div className="page-bar">
       {crumbs?.length ? (
         <nav className="crumbs" aria-label="Breadcrumb">
           {crumbs.map((c, i) => (
-            <span key={i} className="row" style={{ gap: 6 }}>
-              {i ? <ChevronRight size={14} /> : null}
+            <span key={i} className="row" style={{ gap: 4 }}>
+              {i ? <ChevronRight size={12} /> : null}
               {c.href && i < crumbs.length - 1 ? <Link href={c.href}>{c.label}</Link> : <span className={i === crumbs.length - 1 ? 'cur' : ''}>{c.label}</span>}
             </span>
           ))}
@@ -121,9 +121,9 @@ export function Alert({ tone = 'info', title, children, action }: { tone?: Tone;
 export function EmptyState({ title = 'Nothing here yet', children, icon: Icon }: { title?: string; children?: React.ReactNode; icon?: LucideIcon }) {
   return (
     <div className="empty">
-      {Icon ? <Icon size={28} style={{ marginBottom: 8 }} /> : null}
+      {Icon ? <Icon size={22} style={{ marginBottom: 6, opacity: 0.4 }} /> : null}
       <div className="strong secondary">{title}</div>
-      {children ? <div className="text-sm" style={{ marginTop: 4 }}>{children}</div> : null}
+      {children ? <div className="text-xs muted" style={{ marginTop: 3 }}>{children}</div> : null}
     </div>
   );
 }
@@ -136,7 +136,7 @@ export function ErrorBox({ error }: { error: any }) {
 export function Loading({ rows = 3 }: { rows?: number }) {
   return (
     <div className="stack tight" aria-busy="true">
-      {Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" style={{ height: 18, width: `${90 - i * 12}%` }} />)}
+      {Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" style={{ height: 14, width: `${90 - i * 12}%` }} />)}
     </div>
   );
 }
