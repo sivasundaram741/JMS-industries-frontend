@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowDownToLine, ArrowUpFromLine, Boxes, PackageX, Plus, SlidersHorizontal } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Boxes, PackagePlus, PackageX, Plus, ScrollText, SlidersHorizontal } from 'lucide-react';
 import { qs } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useApi, useDebounced } from '@/lib/hooks';
@@ -19,7 +19,7 @@ export default function StockOverviewPage() {
   const [wh, setWh] = useState('');
   const [search, setSearch] = useState('');
   const [low, setLow] = useState(sp.get('low') === '1');
-  const [adjust, setAdjust] = useState(false);
+  const [adjust, setAdjust] = useState<null | { mode: 'adjust' | 'opening'; item?: any; warehouse?: string }>(null);
   const q = useDebounced(search, 300);
   useEffect(() => { if (sp.get('low') === '1') setLow(true); }, [sp]);
 
@@ -37,23 +37,21 @@ export default function StockOverviewPage() {
         title="Stock Overview"
         sub="Stock by item and warehouse · every figure comes from the stock ledger"
         actions={<>
+          <ButtonLink href="/warehouse/ledger" icon={ScrollText}>Stock ledger</ButtonLink>
           {can('stockentry', 'create') ? <ButtonLink href="/warehouse/grn" icon={ArrowDownToLine}>GRN & stock entry</ButtonLink> : null}
-          {can('inventory', 'edit') ? <Button variant="primary" icon={SlidersHorizontal} onClick={() => setAdjust(true)}>Adjust stock</Button> : null}
+          {can('inventory', 'edit') ? <Button icon={PackagePlus} onClick={() => setAdjust({ mode: 'opening' })}>Opening balance</Button> : null}
+          {can('inventory', 'edit') ? <Button variant="primary" icon={SlidersHorizontal} onClick={() => setAdjust({ mode: 'adjust' })}>Adjust stock</Button> : null}
         </>}
       />
       <StageTracker stage="store" />
-      <div className="kpis">
-        <Kpi label="Stock value" value={sum ? inrShort(sum.stockValue) : '—'} icon={Boxes} tone="info" note="at standard cost · all warehouses" />
-        <Kpi label="Inward today" value={sum ? inrShort(sum.inwardToday) : '—'} icon={ArrowDownToLine} tone="success" note="GRNs, opening and adjustments" href="/warehouse/grn" />
-        <Kpi label="Outward today" value={sum ? inrShort(sum.outwardToday) : '—'} icon={ArrowUpFromLine} tone="purple" note="dispatched to customers" />
-        <Kpi label="Low stock alerts" value={sum ? `${num(sum.lowStockCount)} items` : '—'} icon={PackageX} tone={sum?.lowStockCount ? 'danger' : 'success'} note="below reorder level" href="/warehouse/stock?low=1" />
+      <div className="row" style={{ gap: 18, flexWrap: 'wrap', fontSize: 13 }}>
+        <span><span className="muted">Stock value</span> <span className="strong">{sum ? inrShort(sum.stockValue) : '—'}</span></span>
+        <span><span className="muted">RM</span> <span className="strong">{sum ? inrShort(sum.byWarehouse.RM) : '—'}</span></span>
+        <span><span className="muted">WIP</span> <span className="strong">{sum ? inrShort(sum.byWarehouse.WIP) : '—'}</span></span>
+        <span><span className="muted">QC hold</span> <span className="strong">{sum ? inrShort(sum.byWarehouse.QC) : '—'}</span></span>
+        <span><span className="muted">FG</span> <span className="strong">{sum ? inrShort(sum.byWarehouse.FG) : '—'}</span></span>
+        <span><span className="muted">Below reorder</span> <span className={sum?.lowStockCount ? 'strong f-danger' : 'strong'}>{sum ? num(sum.lowStockCount) : '—'}</span></span>
       </div>
-      <StatStrip items={[
-        { label: 'RM Store', value: sum ? inrShort(sum.byWarehouse.RM) : '—', tag: whPct('RM'), tone: 'info' },
-        { label: 'WIP · shop floor', value: sum ? inrShort(sum.byWarehouse.WIP) : '—', tag: whPct('WIP'), tone: 'danger' },
-        { label: 'QC Hold', value: sum ? inrShort(sum.byWarehouse.QC) : '—', tag: whPct('QC'), tone: 'warning' },
-        { label: 'FG Store', value: sum ? inrShort(sum.byWarehouse.FG) : '—', tag: whPct('FG'), tone: 'success' },
-      ]} />
       <ErrorBox error={error} />
       <DataTable
         loading={isLoading}
@@ -61,7 +59,7 @@ export default function StockOverviewPage() {
           right={<label className="row text-sm secondary" style={{ gap: 8, cursor: 'pointer' }}><Toggle on={low} onChange={setLow} label="Low stock only" />Low stock only</label>} />}
         rows={shown}
         rowKey="key"
-        rowHref={(r) => `/tracking?itemId=${r.itemId}`}
+        rowHref={(r) => `/warehouse/ledger?itemId=${r.itemId}`}
         empty={low ? 'Nothing below its reorder level here' : 'No stock matches'}
         columns={[
           { key: 'item', header: 'Item', render: (r) => <Two a={r.itemName} b={r.itemCode} /> },
@@ -71,15 +69,20 @@ export default function StockOverviewPage() {
           { key: 'value', header: 'Value', align: 'right', render: (r) => inr(r.value) },
           { key: 'reorder', header: 'Reorder at', align: 'right', render: (r) => (r.reorderLevel ? num(r.reorderLevel) : <span className="muted">—</span>) },
           { key: 'status', header: 'Status', render: (r) => (r.low ? <Badge tone="danger">Low</Badge> : <Badge tone="success">OK</Badge>) },
+          { key: 'adj', header: '', align: 'right', render: (r) => (can('inventory', 'edit')
+            ? <span onClick={(e) => e.stopPropagation()}>
+                <Button size="xs" icon={SlidersHorizontal} onClick={() => setAdjust({ mode: 'adjust', item: { id: r.itemId, code: r.itemCode, name: r.itemName, uom: r.uom }, warehouse: r.warehouse })}>Adjust</Button>
+              </span>
+            : null) },
         ]}
-        footer={rows ? <div className="tfoot"><span>{num(shown.length)} stock lines · click a line for its stock ledger</span><span className="strong" style={{ color: 'var(--text-primary)' }}>{inr(total)}</span></div> : null}
+        footer={rows ? <div className="tfoot"><span>{num(shown.length)} stock lines · click a line to see every movement behind it</span><span className="strong" style={{ color: 'var(--text-primary)' }}>{inr(total)}</span></div> : null}
       />
       <DataTable
         toolbar={<div className="toolbar"><div><div className="tt">Below reorder level</div><div className="ts">On hand in RM and FG stores vs the reorder level · raise a purchase order for bought items</div></div><div className="spacer" />{can('purchase', 'create') ? <ButtonLink href="/purchase/orders/new" size="sm" icon={Plus}>Raise purchase order</ButtonLink> : null}</div>}
         rows={lowItems}
         loading={!lowItems}
         empty="Every item is above its reorder level"
-        rowHref={(i) => `/tracking?itemId=${i.id}`}
+        rowHref={(i) => `/warehouse/ledger?itemId=${i.id}`}
         columns={[
           { key: 'item', header: 'Item', render: (i) => <Two a={i.name} b={i.code} /> },
           { key: 'type', header: 'Type', render: (i) => <Chip>{TYPE_LABEL[i.type] || i.type}</Chip> },
@@ -87,12 +90,25 @@ export default function StockOverviewPage() {
           { key: 'reorder', header: 'Reorder at', align: 'right', render: (i) => num(i.reorderLevel) },
           { key: 'short', header: 'Short by', align: 'right', render: (i) => <Badge tone="danger" dot={false}>{num(i.shortBy, 3)}</Badge> },
           { key: 'fill', header: 'Cover', render: (i) => <ProgressBar pct={i.reorderLevel ? (i.onHand / i.reorderLevel) * 100 : 0} tone={i.onHand <= 0 ? 'danger' : 'warning'} width={160} label={Math.round(i.reorderLevel ? (i.onHand / i.reorderLevel) * 100 : 0) + '%'} /> },
-          { key: 'act', header: '', align: 'right', render: (i) => (i.type === 'FG' || i.type === 'SERVICE'
-            ? <span className="text-xs muted nowrap">Make on a work order</span>
-            : can('purchase', 'create') ? <span onClick={(e) => e.stopPropagation()}><ButtonLink href={`/purchase/orders/new?item=${i.id}&qty=${Math.ceil(i.shortBy)}`} size="xs" icon={Plus}>Raise PO</ButtonLink></span> : null) },
+          { key: 'act', header: '', align: 'right', render: (i) => (
+            <span className="row" style={{ gap: 6, justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+              {can('inventory', 'edit')
+                ? <Button size="xs" icon={SlidersHorizontal} onClick={() => setAdjust({ mode: 'adjust', item: { id: i.id, code: i.code, name: i.name, uom: i.uom }, warehouse: i.type === 'FG' ? 'FG' : 'RM' })}>Adjust</Button>
+                : null}
+              {i.type === 'FG' || i.type === 'SERVICE'
+                ? <span className="text-xs muted nowrap">Make on a work order</span>
+                : can('purchase', 'create') ? <ButtonLink href={`/purchase/orders/new?item=${i.id}&qty=${Math.ceil(i.shortBy)}`} size="xs" icon={Plus}>Raise PO</ButtonLink> : null}
+            </span>) },
         ]}
       />
-      <AdjustModal open={adjust} onClose={() => setAdjust(false)} onDone={() => { setAdjust(false); mRows(); mSum(); mLow(); }} />
+      <AdjustModal
+        open={!!adjust}
+        mode={adjust?.mode || 'adjust'}
+        fixedItem={adjust?.item || null}
+        fixedWarehouse={adjust?.warehouse}
+        onClose={() => setAdjust(null)}
+        onDone={() => { setAdjust(null); mRows(); mSum(); mLow(); }}
+      />
     </>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Factory, Lock, Mail } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { Alert, Button } from '@/components/ui';
 
@@ -41,19 +41,27 @@ function TenantLoginForm({ tenantSlug }: { tenantSlug: string }) {
   return (
     <div className="login">
       <div className="panel">
-        <div className="row"><span className="logo" style={{ width: 36, height: 36, borderRadius: 9, background: '#155eef', display: 'grid', placeItems: 'center', fontWeight: 700 }}>KC</span><span style={{ fontWeight: 700, fontSize: 18 }}>KCERP</span></div>
-        <div>
-          <div className="row" style={{ gap: 10, marginBottom: 16 }}><span className="icon-tile" style={{ background: '#f79009', color: '#fff', width: 40, height: 40 }}><Factory size={20} /></span><span style={{ fontSize: 13, opacity: 0.8 }}>Organisation: {tenantSlug}</span></div>
-          <div style={{ fontSize: 34, lineHeight: '42px', fontWeight: 700, letterSpacing: -0.6, maxWidth: 460 }}>Every order, from customer PO to payment, in seven stages.</div>
-          <div style={{ marginTop: 14, opacity: 0.75, maxWidth: 440 }}>One system for sales, purchasing, warehouse, production, quality, dispatch and finance — with live order tracking across all seven stages.</div>
+        <div className="row" style={{ gap: 12 }}>
+          <span className="login-mark">JMS</span>
+          <span style={{ fontWeight: 700, fontSize: 19, fontStretch: '90%' }}>Catchu ERP</span>
         </div>
-        <div style={{ fontSize: 12, opacity: 0.6 }}>© {new Date().getFullYear()} KCERP</div>
+        <div>
+          <div className="login-org">{tenantSlug}</div>
+          <h2 className="login-head">Every job, from raw material to the customer&rsquo;s door.</h2>
+          <p className="login-sub">Make it here, buy parts in, send work out for welding or grinding, or take a machine back for repair. Each job carries its own route card, so everyone sees where it is and what comes next.</p>
+          <ol className="login-route" aria-label="An example route card">
+            {['Release', 'Parts & outside work', 'Production', 'Assembly', 'Final QC', 'Close'].map((step, i) => (
+              <li key={step} className={i < 2 ? 'done' : i === 2 ? 'now' : ''}><i aria-hidden /><span>{step}</span>{i === 2 ? <b>Now</b> : null}</li>
+            ))}
+          </ol>
+        </div>
+        <div style={{ fontSize: 12, opacity: 0.6 }}>© {new Date().getFullYear()} Catchu ERP</div>
       </div>
       <div className="form-side">
         <form className="box stack" onSubmit={submit}>
           <div>
-            <h1 style={{ fontSize: 26, lineHeight: '34px', fontWeight: 600 }}>Sign in</h1>
-            <div className="secondary" style={{ marginTop: 4 }}>Use your KCERP account</div>
+            <h1 style={{ fontSize: 30, lineHeight: '36px', fontWeight: 700, fontStretch: '86%' }}>Sign in</h1>
+            <div className="secondary" style={{ marginTop: 4 }}>Use the email and password your manager gave you</div>
           </div>
           {error ? <Alert tone="danger">{error}</Alert> : null}
           <div className="field"><label htmlFor="email">Email</label>

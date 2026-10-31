@@ -16,15 +16,11 @@ export const ENTITY_SOURCES: Record<string, { path: (q: string) => string; map: 
   DN: { path: (q) => `/debit-notes?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.partyName }) },
   VENDOR: { path: (q) => `/vendors?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.name, sub: r.code }) },
   GRN: { path: (q) => `/grns?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.vendorName }) },
-  SR: { path: (q) => `/stock-returns?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: `${r.fromWarehouse} → ${r.toWarehouse}` }) },
   ITEM: { path: (q) => `/items?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.code, sub: r.name }) },
   WO: { path: (q) => `/work-orders?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.itemName }) },
   MACHINE: { path: () => `/machines`, map: (r) => ({ id: r.id, label: r.code, sub: r.name }) },
   IL: { path: (q) => `/quality/inspections?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.itemName }) },
   NCR: { path: (q) => `/quality/ncrs?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.itemName }) },
-  DC: { path: (q) => `/shipments?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.customerName }) },
-  INV: { path: (q) => `/finance/invoices?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.customerName }) },
-  CN: { path: (q) => `/credit-notes?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.number, sub: r.partyName }) },
   EMP: { path: (q) => `/hr/employees?pageSize=20&search=${q}`, map: (r) => ({ id: r.id, label: r.name, sub: r.code }) },
 };
 

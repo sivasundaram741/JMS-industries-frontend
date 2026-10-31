@@ -1,22 +1,25 @@
 'use client';
-// Numbered stage ribbon shown on every page: Sales → Purchase → Warehouse → Production → Quality → Dispatch → Finance
+// The flow bar shown on every page:
+//   1 Masters → 2 Work Order → 3 Purchase (only when outsourced) → 4 Production → 5 Assembly → 6 QC
+// It is the shortest answer to "how do these screens fit together" - each chip opens that step.
 import { useParams, usePathname } from 'next/navigation';
 import { TenantLink as Link } from '../ui/TenantLink';
-import { STAGE_SECTIONS, activeItem } from '@/lib/nav';
+import { STAGES, activeStage } from '@/lib/nav';
 
 export function StageRibbon() {
   const rawPathname = usePathname();
   const { tenant } = (useParams<{ tenant?: string }>() || {}) as { tenant?: string };
   const pathname = tenant ? rawPathname.replace(`/${tenant}`, '') || '/' : rawPathname;
-  const act = activeItem(pathname)?.section.key;
+  const act = activeStage(pathname);
   return (
     <nav className="ribbon" aria-label="Manufacturing flow">
-      {STAGE_SECTIONS.map((s) => {
+      {STAGES.map((s) => {
         const on = s.key === act;
         return (
-          <Link key={s.key} href={s.items[0].href} title={`${s.stage} · ${s.label} · ${s.sub}`} className={on ? `s-${s.tone}` : `t-${s.tone}`} style={on ? { color: '#fff' } : undefined} aria-current={on ? 'step' : undefined}>
-            <span className={'n ' + (on ? '' : `s-${s.tone}`)} style={on ? { background: '#fff', color: `var(--${s.tone}-fg)` } : { color: '#fff' }}>{s.stage}</span>
-            <span className="truncate">{s.short}</span>
+          <Link key={s.key} href={s.href} title={`${s.n} · ${s.label} · ${s.sub}`} className={on ? `s-${s.tone}` : `t-${s.tone}`} style={on ? { color: '#fff' } : undefined} aria-current={on ? 'step' : undefined}>
+            <span className={'n ' + (on ? '' : `s-${s.tone}`)} style={on ? { background: '#fff', color: `var(--${s.tone}-fg)` } : { color: '#fff' }}>{s.n}</span>
+            <span className="truncate">{s.label}</span>
+            {s.optional ? <span className="text-micro" style={{ opacity: 0.75, flex: 'none' }}>if needed</span> : null}
           </Link>
         );
       })}

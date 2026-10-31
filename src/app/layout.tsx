@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import '@fontsource-variable/inter';
+import '@fontsource-variable/archivo/wdth.css';
 import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: { default: 'KCERP', template: '%s · KCERP' },
-  description: 'KCERP · Forgetech Engineering manufacturing ERP',
+  title: { default: 'Catchu ERP', template: '%s · Catchu ERP' },
+  description: 'Catchu ERP · JMS Industries manufacturing ERP',
 };
 
 // Applies the saved appearance (theme, sidebar, compact tables, motion, focus rings) before first paint

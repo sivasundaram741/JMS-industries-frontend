@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 import { date, dateShort, dateTime, inr, inrShort, num, todayIso } from '@/lib/format';
 import { toneOf } from '@/lib/status';
+import { JobLink } from '@/components/JobLink';
 import { Alert, Button, Card, Chip, DataTable, ErrorBox, KeyValue, ListItem, Loading, Modal, PageHeader, StatStrip, StatusBadge, Stepper, TextField, Two, useToast } from '@/components/ui';
 import { ReceiveModal } from '../_components/ReceiveModal';
 import { Attachments } from '@/components/docs/Attachments';
@@ -81,6 +82,7 @@ export default function PurchaseOrderPage() {
           {has('bill') && canEdit ? <Button variant={has('receive') ? 'secondary' : 'primary'} icon={Receipt} onClick={() => { setBill({ billNo: '', amount: String(po.total) }); setDlg('bill'); }}>Book vendor bill</Button> : null}
         </>}
       />
+      <JobLink woId={po.workOrderId} role={jw ? 'Job work for' : 'Parts for'} />
       {po.status === 'Cancelled' ? <Alert tone="neutral" title="This order was cancelled">It stays on record · no goods can be received against it.</Alert> : null}
       {po.status === 'Pending approval' && !can('purchase', 'approve') ? <Alert tone="warning" title="Waiting for a manager's approval">The order value is above the approval limit.</Alert> : null}
       <StatStrip items={[
@@ -143,9 +145,8 @@ export default function PurchaseOrderPage() {
           </Card>
           <Card title="Linked records">
             <div className="list">
-              {po.salesOrderId ? <ListItem icon={ShoppingCart} tone="info" title={po.salesOrderNo} sub="Customer order" href={`/sales/orders/${po.salesOrderId}`} /> : null}
               {po.workOrderId ? <ListItem icon={ClipboardList} tone="danger" title={po.workOrderNo} sub={jw ? 'Work order this job work is for' : 'Work order'} href={`/production/work-orders/${po.workOrderId}`} /> : null}
-              {!po.salesOrderId && !po.workOrderId ? <div className="empty text-sm" style={{ padding: '12px 0' }}>Not linked to an order · raised for stock</div> : null}
+              {!po.workOrderId ? <div className="empty text-sm" style={{ padding: '12px 0' }}>Not raised for a work order · bought for stock</div> : null}
             </div>
           </Card>
           <Attachments entityType="PO" entityId={po.id} entityNo={po.number} />

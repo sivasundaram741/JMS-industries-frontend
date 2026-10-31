@@ -7,3 +7,4 @@ export * from './modal';
 export * from './toast';
 export * from './steps';
 export * from './ComboField';
+export * from './ContextMenu';

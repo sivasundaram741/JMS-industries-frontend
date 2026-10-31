@@ -18,15 +18,11 @@ interface Approval {
 const KIND: Record<string, { icon: LucideIcon; tone: Tone; href: (id: number) => string }> = {
   PO: { icon: Receipt, tone: 'teal', href: (id) => `/purchase/orders/${id}` },
   WO: { icon: ClipboardList, tone: 'danger', href: (id) => `/production/work-orders/${id}` },
-  SO_CREDIT: { icon: ShieldAlert, tone: 'info', href: (id) => `/sales/orders/${id}` },
-  PB: { icon: FileText, tone: 'teal', href: (id) => `/purchase/bills/${id}` },
-  DN: { icon: FileMinus, tone: 'warning', href: (id) => `/purchase/debit-notes/${id}` },
-  CN: { icon: FileX2, tone: 'purple', href: (id) => `/finance/credit-notes/${id}` },
   PAYROLL: { icon: IdCard, tone: 'success', href: (id) => `/hr?tab=payroll&run=${id}` },
 };
 // Details carry ISO dates (due 2026-10-04); show them like the rest of the app
 const tidy = (t: string) => t.replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (d) => dateShort(d));
-const MODULE: Record<string, string> = { purchase: 'Purchase', subcon: 'Subcontracting', wo: 'Production', sales: 'Sales', quality: 'Quality', finance: 'Finance', pbills: 'Purchase Bills', debitinv: 'Debit Invoices', creditinv: 'Credit Invoices', hr: 'HR & Payroll' };
+const MODULE: Record<string, string> = { purchase: 'Buying', subcon: 'Job work', wo: 'Production', quality: 'Quality', hr: 'People' };
 
 export default function ApprovalsPage() {
   const { user } = useAuth();

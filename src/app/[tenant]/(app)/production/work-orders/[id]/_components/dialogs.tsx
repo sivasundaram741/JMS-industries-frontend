@@ -1,9 +1,9 @@
 'use client';
-// Dialogs on the work order page: issue material, record production and move to quality (with split).
+// Dialogs on the work order page: issue material, record production, move to quality, material QC.
 import { useMemo, useState } from 'react';
-import { post } from '@/lib/api';
-import { addDaysIso, num, todayIso } from '@/lib/format';
-import { Alert, Button, Checkbox, Modal, SelectField, TextField, useToast } from '@/components/ui';
+import { patch, post } from '@/lib/api';
+import { addDaysIso, dateShort, num, todayIso } from '@/lib/format';
+import { Alert, Badge, Button, Checkbox, Modal, SelectField, TextField, useToast } from '@/components/ui';
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 type Done = (wo: any) => void;
@@ -16,34 +16,47 @@ export function IssueDialog({ wo, onClose, onDone }: { wo: any; onClose: () => v
   const [busy, setBusy] = useState(false);
   const lines = wo.materials.map((m: any) => ({ materialId: m.id, qty: Number(qty[m.id]) || 0 })).filter((l: any) => l.qty > 0);
   const over = wo.materials.some((m: any) => (Number(qty[m.id]) || 0) > m.stockAvailable + 0.0005);
+  const failMats = wo.materials.filter((m: any) => m.qcStatus === 'Fail');
 
   async function save() {
     setBusy(true);
     try {
       const r = await post(`/work-orders/${wo.id}/issue`, { lines });
-      toast.ok(`Material issued to ${wo.number} · ${lines.length} item${lines.length === 1 ? '' : 's'} moved to the shop floor`);
+      toast.ok(`Material issued to ${wo.number} · ${lines.length} item${lines.length === 1 ? '' : 's'} moved to shop floor`);
       onDone(r);
     } catch (e) { toast.err(e); setBusy(false); }
   }
 
   return (
-    <Modal open wide onClose={onClose} title="Issue material" sub={`RM Store → shop floor for ${wo.number} · oldest lot first`}
+    <Modal open wide onClose={onClose} title="Issue Material" sub={`RM Store → shop floor for ${wo.number} · oldest lot first`}
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} disabled={!lines.length || over} onClick={save}>Issue {lines.length ? lines.length + ' item' + (lines.length === 1 ? '' : 's') : ''}</Button></>}>
       <div className="stack" style={{ gap: 12 }}>
-        <div className="table-wrap" style={{ border: '1px solid var(--border-default)', borderRadius: 10 }}>
+        {failMats.length > 0 && (
+          <Alert tone="danger" title={`${failMats.length} material${failMats.length === 1 ? '' : 's'} failed QC`}>
+            {failMats.map((m: any) => m.itemName).join(', ')} — complete QC before issuing.
+          </Alert>
+        )}
+        <div className="table-wrap" style={{ border: '1px solid var(--border-default)', borderRadius: 6 }}>
           <table className="tbl">
-            <thead><tr><th>Material</th><th className="r">Required</th><th className="r">Issued</th><th className="r">In RM Store</th><th className="r">Qty to issue</th></tr></thead>
+            <thead>
+              <tr><th>Material</th><th>QC</th><th className="r">Required</th><th className="r">Issued</th><th className="r">In RM Store</th><th className="r">Qty to issue</th></tr>
+            </thead>
             <tbody>
               {wo.materials.map((m: any) => {
                 const q = Number(qty[m.id]) || 0, bad = q > m.stockAvailable + 0.0005;
                 return (
                   <tr key={m.id}>
                     <td><div className="two"><div className="a">{m.itemName}</div><div className="b">{m.itemCode}</div></div></td>
+                    <td>
+                      <Badge tone={m.qcStatus === 'Pass' ? 'success' : m.qcStatus === 'Fail' ? 'danger' : 'neutral'} dot={false}>
+                        {m.qcStatus || 'Pending'}
+                      </Badge>
+                    </td>
                     <td className="r num">{num(m.qtyRequired, 3)} {m.uom}</td>
                     <td className="r num">{num(m.qtyIssued, 3)}</td>
                     <td className={'r num' + (m.stockAvailable < m.qtyRequired - m.qtyIssued ? ' f-danger strong' : '')}>{num(m.stockAvailable, 3)}</td>
                     <td className="r">
-                      <input className="cell num" type="number" min={0} step="any" aria-label={`Qty of ${m.itemName} to issue`} value={qty[m.id] ?? ''} onChange={(e) => setQty({ ...qty, [m.id]: e.target.value })} style={bad ? { borderColor: 'var(--danger-solid)' } : undefined} />
+                      <input className="cell num" type="number" min={0} step="any" aria-label={`Qty of ${m.itemName}`} value={qty[m.id] ?? ''} onChange={(e) => setQty({ ...qty, [m.id]: e.target.value })} style={bad ? { borderColor: 'var(--danger-solid)' } : undefined} />
                     </td>
                   </tr>
                 );
@@ -51,15 +64,15 @@ export function IssueDialog({ wo, onClose, onDone }: { wo: any; onClose: () => v
             </tbody>
           </table>
         </div>
-        {over ? <Alert tone="danger" title="More than the stock in RM Store">Lower the highlighted quantities, or receive more stock first.</Alert>
-          : <div className="text-xs muted">Quantities default to what is still to issue, limited by the stock in RM Store. Leave 0 to skip a material.</div>}
+        {over ? <Alert tone="danger" title="More than stock in RM Store">Lower the highlighted quantities or receive more stock first.</Alert>
+          : <div className="text-xs muted">Quantities default to what is still to issue, limited by RM Store stock. Leave 0 to skip.</div>}
       </div>
     </Modal>
   );
 }
 
-// Record production against one operation
-export function RecordDialog({ wo, machines, onClose, onDone }: { wo: any; machines: any[]; onClose: () => void; onDone: Done }) {
+// Record production against one operation — with notes
+export function RecordDialog({ wo, machines, onClose, onDone, defaultDate }: { wo: any; machines: any[]; onClose: () => void; onDone: Done; defaultDate?: string }) {
   const toast = useToast();
   const ops: any[] = wo.operations;
   const firstOpen = Math.max(0, ops.findIndex((o) => o.status !== 'Done' && o.qtyDone < wo.qtyPlanned - 0.0005));
@@ -67,7 +80,7 @@ export function RecordDialog({ wo, machines, onClose, onDone }: { wo: any; machi
   const operatorOf = (o: any) => machines.find((m) => m.id === (o?.machineId || wo.machineId))?.operator || '';
   const [f, setF] = useState(() => ({
     operationId: String(ops[firstOpen]?.id || ''), qtyGood: String(Math.max(0, capOf(firstOpen))), qtyScrap: '0', downtimeMin: '0', runHours: '',
-    shift: wo.shift || 'A', operator: operatorOf(ops[firstOpen]), entryDate: todayIso(),
+    shift: wo.shift || 'A', operator: operatorOf(ops[firstOpen]), entryDate: defaultDate || todayIso(), notes: '',
   }));
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF({ ...f, [k]: v });
@@ -86,8 +99,9 @@ export function RecordDialog({ wo, machines, onClose, onDone }: { wo: any; machi
     setBusy(true);
     try {
       const r = await post(`/work-orders/${wo.id}/production`, {
-        operationId: Number(f.operationId), qtyGood: good, qtyScrap: scrap, downtimeMin: Math.round(Number(f.downtimeMin) || 0), runHours: Number(f.runHours) || 0,
-        shift: f.shift, operator: f.operator || undefined, entryDate: f.entryDate || undefined,
+        operationId: Number(f.operationId), qtyGood: good, qtyScrap: scrap,
+        downtimeMin: Math.round(Number(f.downtimeMin) || 0), runHours: Number(f.runHours) || 0,
+        shift: f.shift, operator: f.operator || undefined, entryDate: f.entryDate || undefined, notes: f.notes || undefined,
       });
       toast.ok(`Op ${op.seq} · ${num(good)} good${scrap ? ' · ' + num(scrap) + ' scrap' : ''} recorded`);
       onDone(r);
@@ -95,11 +109,11 @@ export function RecordDialog({ wo, machines, onClose, onDone }: { wo: any; machi
   }
 
   return (
-    <Modal open wide onClose={onClose} title="Record production" sub={`${wo.number} · ${wo.itemName} · good pieces, scrap and downtime for one shift`}
-      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} disabled={!op || good + scrap <= 0 || tooMany} onClick={save}>Record entry</Button></>}>
+    <Modal open wide onClose={onClose} title="Record Production" sub={`${wo.number} · ${wo.itemName} · good pieces, scrap and downtime`}
+      footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} disabled={!op || good + scrap <= 0 || tooMany} onClick={save}>Save Entry</Button></>}>
       <div className="form c3">
         <SelectField className="span2" label="Operation" value={f.operationId} onChange={pickOp}
-          options={ops.map((o) => ({ value: o.id, label: `Op ${o.seq} · ${o.name} · ${num(o.qtyDone)} / ${num(wo.qtyPlanned)}${o.status === 'Done' || o.qtyDone >= wo.qtyPlanned - 0.0005 ? ' · done' : ''}` }))} />
+          options={ops.map((o) => ({ value: o.id, label: `Op ${o.seq} · ${o.name} · ${num(o.qtyDone)} / ${num(wo.qtyPlanned)}${o.status === 'Done' || o.qtyDone >= wo.qtyPlanned - 0.0005 ? ' · ✓ done' : ''}` }))} />
         <TextField label="Date" type="date" value={f.entryDate} onChange={set('entryDate')} />
         <TextField label="Good qty" type="number" min={0} value={f.qtyGood} onChange={set('qtyGood')}
           hint={op ? (tooMany ? undefined : `Up to ${num(cap)} more${idx > 0 ? ` · ${num(ops[idx - 1].qtyDone)} have finished Op ${ops[idx - 1].seq}` : ''}`) : undefined} />
@@ -108,8 +122,60 @@ export function RecordDialog({ wo, machines, onClose, onDone }: { wo: any; machi
         <TextField label="Run hours" type="number" min={0} step="0.1" value={f.runHours} onChange={set('runHours')} placeholder="e.g. 7.5" />
         <SelectField label="Shift" value={f.shift} onChange={set('shift')} options={['A', 'B', 'C'].map((s) => ({ value: s, label: 'Shift ' + s }))} />
         <TextField label="Operator" value={f.operator} onChange={set('operator')} placeholder="Operator name" />
-        {tooMany ? <div className="full"><Alert tone="danger" title={`Only ${num(cap)} more can be recorded on Op ${op.seq}`}>{idx === 0 ? `${num(wo.qtyPlanned)} are planned on this work order.` : `An operation cannot finish more pieces than the operation before it.`}</Alert></div> : null}
-        {op?.machineCode ? <div className="full text-xs muted">Recorded on {op.machineCode} (the operation's machine). The last operation's good pieces count as completed on the work order.</div> : null}
+        <TextField className="span3" label="Progress note (optional)" value={f.notes} onChange={set('notes')} placeholder="e.g. First piece approved · tool changed after 50 pcs" />
+        {tooMany ? <div className="full"><Alert tone="danger" title={`Only ${num(cap)} more can be recorded on Op ${op.seq}`}>{idx === 0 ? `${num(wo.qtyPlanned)} planned.` : `Cannot exceed previous operation's output.`}</Alert></div> : null}
+        {op?.machineCode ? <div className="full text-xs muted">Recorded on {op.machineCode}.</div> : null}
+      </div>
+    </Modal>
+  );
+}
+
+// Material QC · inspect a raw material line before or after issuing to shop floor
+export function MaterialQcDialog({ wo, material, onClose, onDone }: { wo: any; material: any; onClose: () => void; onDone: Done }) {
+  const toast = useToast();
+  const [f, setF] = useState({
+    status: material.qcStatus || 'Pending',
+    inspector: material.qcInspector || '',
+    date: material.qcDate || todayIso(),
+    qtyOk: String(material.qcQtyOk > 0 ? material.qcQtyOk : (material.qtyIssued || material.qtyRequired || '')),
+    qtyFail: String(material.qcQtyFail || 0),
+    note: material.qcNote || '',
+  });
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof f) => (v: string) => setF({ ...f, [k]: v });
+
+  async function save() {
+    setBusy(true);
+    try {
+      const r = await patch(`/work-orders/${wo.id}/materials/${material.id}/qc`, {
+        status: f.status, inspector: f.inspector || undefined, date: f.date || undefined,
+        qtyOk: Number(f.qtyOk) || 0, qtyFail: Number(f.qtyFail) || 0, note: f.note || undefined,
+      });
+      toast.ok(`Material QC saved: ${f.status}`);
+      onDone(r);
+    } catch (e) { toast.err(e); setBusy(false); }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Log Material QC"
+      sub={`${material.itemName} · ${material.itemCode} · ${num(material.qtyRequired, 3)} ${material.uom} required`}
+      footer={<>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant={f.status === 'Pass' ? 'success' : f.status === 'Fail' ? 'danger' : 'primary'} loading={busy} onClick={save}>
+          {f.status === 'Pass' ? '✓ Save Pass' : f.status === 'Fail' ? '✗ Save Fail' : 'Save QC'}
+        </Button>
+      </>}>
+      <div className="form c2">
+        <SelectField className="span2" label="QC Result" value={f.status} onChange={set('status')} options={[
+          { value: 'Pending', label: 'Pending — not yet inspected' },
+          { value: 'Pass', label: '✓ Pass — material approved for production' },
+          { value: 'Fail', label: '✗ Fail — material rejected, do not issue' },
+        ]} />
+        <TextField label="Inspector name" value={f.inspector} onChange={set('inspector')} placeholder="Name of inspector" />
+        <TextField label="Inspection date" type="date" value={f.date} onChange={set('date')} />
+        <TextField label={`Qty OK (${material.uom})`} type="number" min={0} step="any" value={f.qtyOk} onChange={set('qtyOk')} />
+        <TextField label={`Qty Rejected (${material.uom})`} type="number" min={0} step="any" value={f.qtyFail} onChange={set('qtyFail')} />
+        <TextField className="span2" label="Defect / Remarks" value={f.note} onChange={set('note')} placeholder="e.g. Surface cracks on 3 pcs · EN8 cert not matching heat no." />
       </div>
     </Modal>
   );
@@ -133,20 +199,20 @@ export function MoveDialog({ wo, machines, onClose, onDone }: { wo: any; machine
     try {
       const r = await post(`/work-orders/${wo.id}/move-to-quality`, { qty: q, ...(split ? { splitRemaining: true, splitDueDate: due || undefined, splitMachineId: machineId ? Number(machineId) : undefined } : {}) });
       const lot = r.workOrder?.inspections?.[r.workOrder.inspections.length - 1];
-      toast.ok(`${num(q)} ${wo.uom} moved to quality${lot ? ' · ' + lot.number : ''}${r.splitNo ? ` · ${r.splitNo} created for the remaining ${num(remaining)}` : ''}`);
+      toast.ok(`${num(q)} ${wo.uom} moved to quality${lot ? ' · ' + lot.number : ''}${r.splitNo ? ` · ${r.splitNo} created` : ''}`);
       onDone(r.workOrder);
     } catch (e) { toast.err(e); setBusy(false); }
   }
 
   return (
-    <Modal open onClose={onClose} title="Move to quality" sub={`Finished pieces go to QC Hold with a final inspection lot · ${num(waiting)} ${wo.uom} waiting`}
+    <Modal open onClose={onClose} title="Move to Quality" sub={`Finished pieces → QC Hold with inspection lot · ${num(waiting)} ${wo.uom} waiting`}
       footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" loading={busy} disabled={q <= 0 || q > waiting + 0.0005} onClick={save}>{split ? 'Move and split' : 'Move to quality'}</Button></>}>
       <div className="stack" style={{ gap: 16 }}>
-        <TextField label={`Quantity (${wo.uom})`} type="number" min={0} value={qty} onChange={setQty} hint={q > waiting + 0.0005 ? undefined : `${num(wo.qtyCompleted)} completed · ${num(wo.qtyToQc)} already sent to quality`} />
+        <TextField label={`Quantity (${wo.uom})`} type="number" min={0} value={qty} onChange={setQty} hint={q > waiting + 0.0005 ? undefined : `${num(wo.qtyCompleted)} completed · ${num(wo.qtyToQc)} already in quality`} />
         {q > waiting + 0.0005 ? <Alert tone="danger" title={`Only ${num(waiting)} finished pieces are waiting`} /> : null}
         {remaining > 0 ? (
-          <div className="stack" style={{ gap: 12, padding: 14, border: '1px solid var(--border-default)', borderRadius: 10, background: 'var(--bg-subtle)' }}>
-            <Checkbox checked={split} onChange={setSplit} label={<span><span className="strong">Split the remaining {num(remaining)} into a new work order</span><br /><span className="text-xs muted">This work order is re-planned to {num(wo.qtyCompleted)} and closes once they pass quality</span></span>} />
+          <div className="stack" style={{ gap: 12, padding: 14, border: '1px solid var(--border-default)', borderRadius: 6, background: 'var(--bg-subtle)' }}>
+            <Checkbox checked={split} onChange={setSplit} label={<span><span className="strong">Split the remaining {num(remaining)} into a new work order</span><br /><span className="text-xs muted">This work order re-plans to {num(wo.qtyCompleted)} and closes once they pass quality</span></span>} />
             {split ? (
               <div className="form c2">
                 <TextField label="New due date" type="date" value={due} onChange={setDue} />
@@ -156,7 +222,7 @@ export function MoveDialog({ wo, machines, onClose, onDone }: { wo: any; machine
           </div>
         ) : null}
         {!split && q > 0 && q <= waiting + 0.0005 ? (
-          <div className="text-xs muted">{after > 0.0005 ? `Partial completion · ${num(after)} ${wo.uom} stay on ${wo.number} to finish` : `All ${num(wo.qtyPlanned)} will be in quality · ${wo.number} completes`}</div>
+          <div className="text-xs muted">{after > 0.0005 ? `Partial · ${num(after)} ${wo.uom} remain on ${wo.number}` : `All ${num(wo.qtyPlanned)} in quality · ${wo.number} completes`}</div>
         ) : null}
       </div>
     </Modal>

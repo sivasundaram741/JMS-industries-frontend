@@ -3,14 +3,14 @@
 // and see the andon alerts.
 import { useState } from 'react';
 import { TenantLink as Link } from '@/components/ui/TenantLink';
-import { CirclePause, TriangleAlert, User, Wrench } from 'lucide-react';
+import { Check, CirclePause, TriangleAlert, User, Wrench } from 'lucide-react';
 import { patch } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 import { ago, num } from '@/lib/format';
 import { hrefFor } from '@/lib/links';
 import { toneOf } from '@/lib/status';
-import { Badge, Button, Card, EmptyState, ErrorBox, ListItem, Loading, Modal, PageHeader, ProgressBar, Segmented, StatStrip, StatusBadge, TextField, useToast } from '@/components/ui';
+import { Badge, Button, ButtonLink, Card, EmptyState, ErrorBox, ListItem, Loading, Modal, PageHeader, ProgressBar, Segmented, StatStrip, StatusBadge, TextField, useToast } from '@/components/ui';
 import { ProductionTabs } from '../_components/shared';
 
 const STATUSES = ['Running', 'Setup', 'Down', 'Idle'] as const;
@@ -45,9 +45,9 @@ export default function ShopFloorPage() {
     <>
       <PageHeader
         crumbs={[{ label: user?.company.shortName || '' }, { label: 'Production' }, { label: 'Shop Floor' }]}
-        title="Shop Floor"
+        title="Shop floor"
         tags={<Badge tone="success">Live</Badge>}
-        sub={`Machine status, loaded work orders and today's output · refreshes every 30 s${editable ? ' · click a machine to change its status' : ''}`}
+        sub="Every machine, the job on it and today's output · tap Record output to log pieces against that job"
       />
       <ProductionTabs active="floor" />
       <ErrorBox error={error} />
@@ -62,18 +62,13 @@ export default function ShopFloorPage() {
             { label: 'Downtime today', value: `${num(data.summary.downtimeToday)} min`, color: data.summary.downtimeToday ? 'warning' : undefined },
           ]} />
 
-          <div className="grid cols-4" style={{ gap: 16 }}>
+          <div className="floor-grid">
             {data.machines.map((m: any) => {
               const t = toneOf('machine', m.status);
               return (
                 <div
                   key={m.id}
-                  className={'card machine' + (editable ? ' link' : '')}
-                  role={editable ? 'button' : undefined}
-                  tabIndex={editable ? 0 : undefined}
-                  aria-label={editable ? `Change status of ${m.code}` : undefined}
-                  onClick={() => open(m)}
-                  onKeyDown={(e) => { if (editable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(m); } }}
+                  className="card machine"
                   style={{ borderColor: m.status === 'Down' ? 'var(--danger-solid)' : undefined, boxShadow: m.status === 'Down' ? '0 0 0 1px var(--danger-solid)' : undefined }}
                 >
                   <div className="row" style={{ gap: 8 }}>
@@ -96,6 +91,13 @@ export default function ShopFloorPage() {
                     <span className="muted nowrap">since {ago(m.statusSince)}</span>
                   </div>
                   {m.statusNote ? <div className={`text-xs strong f-${t} truncate`} title={m.statusNote}>{m.statusNote}</div> : null}
+                  {/* Big, plain actions for the floor: record against the loaded job, or say what the machine is doing */}
+                  <div className="row" style={{ gap: 8, marginTop: 'auto', paddingTop: 4 }}>
+                    {m.currentWoId && can('wo', 'edit') && ['In Progress', 'In Assembly'].includes(m.woStatus)
+                      ? <ButtonLink href={`/production/work-orders/${m.currentWoId}?do=record`} variant="primary" size="lg" icon={Check} className="grow">Record output</ButtonLink>
+                      : m.currentWoId ? <ButtonLink href={`/production/work-orders/${m.currentWoId}`} size="lg" className="grow">{m.woStatus === 'On Hold' ? 'Job on hold' : 'Open job'}</ButtonLink> : null}
+                    {editable ? <Button size="lg" onClick={() => open(m)} className="grow" aria-label={`Change status of ${m.code}`}>Status</Button> : null}
+                  </div>
                 </div>
               );
             })}

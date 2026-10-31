@@ -7,7 +7,6 @@ import { Alert, ButtonLink, PageHeader, Spinner } from '@/components/ui';
 import { activeItem } from '@/lib/nav';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
-import { StageRibbon } from './StageRibbon';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { status, user, can, logout } = useAuth();
@@ -16,6 +15,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { tenant } = (useParams<{ tenant?: string }>() || {}) as { tenant?: string };
   const pathname = tenant ? rawPathname.replace(`/${tenant}`, '') || '/' : rawPathname;
   const [branch, setBranch] = useState('');
+  // Below 900 px the sidebar becomes a drawer opened from the top bar (tablets on the shop floor).
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => { setNavOpen(false); }, [rawPathname]);
 
   // Tenant in URL changed mid-session → log out immediately, regardless of auth state,
   // then land on the new tenant's login page.
@@ -41,15 +43,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // A page whose menu the role cannot view (typed URL, old link) shows a short notice instead of failing requests.
   // Appearance is open to everyone.
   const act = activeItem(pathname);
-  const blocked = act && !can(act.item.module) && !(act.item.alt || []).some((m) => can(m)) && !pathname.startsWith('/settings/appearance') ? act.item : null;
+  const blocked = act && !can(act.module) && !(act.alt || []).some((m) => can(m)) && !pathname.startsWith('/settings/appearance') ? act : null;
   if (status !== 'signed-in') return <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}><Spinner size={24} /></div>;
   return (
     <div className="app">
-      <Sidebar branch={branch} />
+      <Sidebar branch={branch} open={navOpen} />
+      {navOpen ? <div className="nav-backdrop" onClick={() => setNavOpen(false)} aria-hidden /> : null}
       <div className="main">
-        <Topbar branch={branch} onBranch={setBranch} />
+        <Topbar branch={branch} onBranch={setBranch} onMenu={() => setNavOpen(true)} />
         <main className="content">
-          <StageRibbon />
           <Suspense fallback={<Spinner />}>{blocked ? (
             <>
               <PageHeader crumbs={[{ label: user?.company.shortName || '' }, { label: blocked.label }]} title={blocked.label} />

@@ -8,7 +8,7 @@ import { patch, post, put } from '@/lib/api';
 import { useAuth, type Action } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 import { ago } from '@/lib/format';
-import { OVERVIEW, SECTIONS } from '@/lib/nav';
+import { MENU, STAGES, type NavItem } from '@/lib/nav';
 import type { Tone } from '@/lib/status';
 import { Alert, Avatar, Badge, Button, Card, DataTable, ErrorBox, IconTile, Loading, Modal, PageHeader, SelectField, Tabs, TextField, Toggle, Two, useToast } from '@/components/ui';
 import { SettingsTabs } from '../_components/SettingsTabs';
@@ -18,18 +18,24 @@ interface Role { id: number; key: string; name: string; description: string | nu
 interface RolesData { modules: string[]; actions: Action[]; roles: Role[] }
 interface User { id: number; name: string; email: string; title: string | null; initials: string | null; isActive: boolean; lastLoginAt: string | null; roleId: number; roleKey: string; roleName: string }
 
-// Menu names, the same as the sidebar
-const MODULE_LABEL: Record<string, string> = Object.fromEntries([OVERVIEW, ...SECTIONS].flatMap((s) => s.items.map((i) => [i.module, i.label])));
+// Menu names, the same as the sidebar; modules with no menu entry keep their key
+const MODULE_LABEL: Record<string, string> = Object.fromEntries(MENU.map((i: NavItem) => [i.module, i.label]));
 const ACTION_LABEL: Record<Action, string> = { view: 'View', create: 'Create', edit: 'Edit', delete: 'Delete', approve: 'Approve' };
 const ROLE_ICON: Record<string, { icon: LucideIcon; tone: Tone }> = {
   manager: { icon: UserCog, tone: 'success' }, ops: { icon: Factory, tone: 'info' }, store: { icon: Warehouse, tone: 'warning' },
   purchase: { icon: Truck, tone: 'purple' }, accounts: { icon: Landmark, tone: 'teal' }, auditor: { icon: Eye, tone: 'neutral' },
 };
 
-// Where each module sits in the menu, e.g. "Sales · CRM"
+// Which part of the flow a module belongs to, e.g. "3 Production"
+const MODULE_STAGE: Record<string, string> = {
+  purchase: 'buy', subcon: 'buy', vendors: 'buy',
+  inventory: 'store', stockentry: 'store', batches: 'store',
+  wo: 'prod', shopfloor: 'prod',
+  quality: 'quality',
+};
 function groupOf(module: string) {
-  for (const s of [OVERVIEW, ...SECTIONS]) if (s.items.some((i) => i.module === module)) return s.label + (s.sub ? ' · ' + s.sub : '');
-  return '';
+  const st = STAGES.find((s) => s.key === MODULE_STAGE[module]);
+  return st ? `${st.n} ${st.label}` : '';
 }
 const EMPTY = { name: '', email: '', title: '', roleId: '', password: '' };
 

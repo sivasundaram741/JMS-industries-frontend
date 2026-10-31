@@ -3,9 +3,9 @@
 // and a small "More" menu for secondary actions.
 import { useEffect, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ClipboardList, Ellipsis, Factory, Forklift, GitFork, Play, Send, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Ellipsis, Factory, Forklift, GitFork, Lock, Play, ShieldCheck } from 'lucide-react';
 import { useApi } from '@/lib/hooks';
-import { Tabs } from '@/components/ui';
+import { Alert, Tabs } from '@/components/ui';
 
 export const WO_PROCESS: Array<{ label: string; sub?: string; icon: LucideIcon; href: string }> = [
   { label: 'Create work order', icon: ClipboardList, href: '/production/work-orders/new' },
@@ -14,21 +14,13 @@ export const WO_PROCESS: Array<{ label: string; sub?: string; icon: LucideIcon; 
   { label: 'Record production', icon: Factory, href: '/production/work-orders?status=In Progress' },
   { label: 'Partial completion', sub: '(if needed)', icon: GitFork, href: '/production/work-orders?status=In Progress,On Hold' },
   { label: 'Move to quality', icon: ShieldCheck, href: '/quality' },
-  { label: 'Dispatch & invoice', icon: Send, href: '/dispatch' },
+  { label: 'Close work order', icon: Lock, href: '/production/work-orders?status=Completed' },
 ];
 
-export function ProductionTabs({ active }: { active: 'wo' | 'floor' }) {
-  const { data } = useApi<Record<string, number>>('/work-orders/summary');
-  const open = data ? Object.entries(data).filter(([k]) => k !== 'Closed').reduce((a, [, v]) => a + v, 0) : undefined;
-  return (
-    <Tabs
-      active={active}
-      items={[
-        { key: 'wo', label: 'Work Orders', href: '/production/work-orders', count: open },
-        { key: 'floor', label: 'Shop Floor', href: '/production/shop-floor' },
-      ]}
-    />
-  );
+// Work orders, the shop floor and reports each have their own place in the sidebar now, so the production pages
+// no longer repeat them as tabs. Kept as a no-op so older screens that still render it need no change.
+export function ProductionTabs(_props: { active: 'wo' | 'floor' | 'reports' }) {
+  return null;
 }
 
 // Button that opens a dropdown of secondary actions
@@ -59,5 +51,18 @@ export function MoreMenu({ items }: { items: Array<{ label: string; icon: Lucide
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** The work order's own notes, shown as a plain-language panel.
+ *  First line is the heading, the rest is the explanation. */
+export function WorkOrderNote({ notes, tone = 'info' }: { notes?: string | null; tone?: 'info' | 'warning' }) {
+  const lines = String(notes || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (!lines.length) return null;
+  const [head, ...rest] = lines;
+  return (
+    <Alert tone={tone} title={head}>
+      {rest.map((l, i) => <div key={i} style={{ marginTop: i ? 4 : 0 }}>{l}</div>)}
+    </Alert>
   );
 }

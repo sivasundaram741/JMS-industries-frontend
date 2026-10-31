@@ -59,7 +59,7 @@ export function PageHeader({ crumbs, title, sub, tags, actions, back }: { crumbs
   const router = useRouter();
   const tenantHref = useTenantHref();
   useEffect(() => {
-    if (typeof title === 'string') document.title = title + ' · KCERP';
+    if (typeof title === 'string') document.title = title + ' · Catchu ERP';
   }, [title]);
   return (
     <div className="page-bar">

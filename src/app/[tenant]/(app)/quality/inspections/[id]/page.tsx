@@ -9,6 +9,7 @@ import { post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 import { dateTime, num } from '@/lib/format';
+import { JobLink } from '@/components/JobLink';
 import { Alert, Badge, Button, Card, Chip, DataTable, ErrorBox, KeyValue, ListItem, Loading, PageHeader, StatStrip, StatusBadge, useToast } from '@/components/ui';
 import { TYPE_TONE } from '../../_components/InspectionsTab';
 import { ResultsForm } from './_components/ResultsForm';
@@ -50,6 +51,7 @@ export default function InspectionLotPage() {
         sub={<>{lot.itemName} × {num(lot.qty)} {lot.uom} · {lot.type.toLowerCase()} inspection · from {sourceLink}</>}
         actions={lot.status === 'Pending' && editable ? <Button variant="primary" icon={Microscope} loading={busy} onClick={start}>Start sampling</Button> : null}
       />
+      {lot.sourceType === 'WO' ? <JobLink woId={lot.sourceId} role="Final inspection for job" /> : null}
 
       <div className="grid main-side">
         <div className="stack">
@@ -89,7 +91,6 @@ export default function InspectionLotPage() {
               ['Quantity', `${num(lot.qty)} ${lot.uom}`],
               ['Inspector', lot.inspector || (open ? 'Not started' : '—')],
               ['Source', sourceLink],
-              ['Customer order', lot.salesOrderNo ? <Link key="so" href={`/sales/orders/${lot.salesOrderId}`}>{lot.salesOrderNo}</Link> : '—'],
               ['Raised', dateTime(lot.createdAt)],
             ]} />
           </Card>

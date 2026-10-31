@@ -6,11 +6,11 @@ import type { Tone, StatusKind } from '@/lib/status';
 import { toneOf } from '@/lib/status';
 
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'success' | 'danger' | 'danger-outline';
-type BtnSize = 'md' | 'sm' | 'xs';
+type BtnSize = 'lg' | 'md' | 'sm' | 'xs';
 interface BtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> { variant?: BtnVariant; size?: BtnSize; icon?: LucideIcon; iconRight?: LucideIcon; loading?: boolean }
 
 const cls = (variant: BtnVariant = 'secondary', size: BtnSize = 'md', extra?: string) => ['btn', variant !== 'secondary' && variant, size !== 'md' && size, extra].filter(Boolean).join(' ');
-const iconSize = (size: BtnSize = 'md') => (size === 'xs' ? 13 : size === 'sm' ? 15 : 16);
+const iconSize = (size: BtnSize = 'md') => (size === 'xs' ? 13 : size === 'sm' ? 15 : size === 'lg' ? 20 : 16);
 
 export function Button({ variant, size, icon: Icon, iconRight: IconR, loading, children, className, disabled, ...rest }: BtnProps) {
   return (

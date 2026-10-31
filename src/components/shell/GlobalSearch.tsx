@@ -34,12 +34,8 @@ export function GlobalSearch() {
     const s = encodeURIComponent(term);
     const jobs: Array<Promise<Hit[]>> = [];
     if (can('wo')) jobs.push(api(`/work-orders?search=${s}&pageSize=4`).then((r) => r.rows.map((x: any) => ({ group: 'Work orders', title: `${x.number} · ${x.itemName}`, sub: `${x.status} · ${x.qtyCompleted} / ${x.qtyPlanned}`, href: `/production/work-orders/${x.id}` }))));
-    if (can('sales')) jobs.push(api(`/sales-orders?search=${s}&pageSize=4`).then((r) => r.rows.map((x: any) => ({ group: 'Customer orders', title: `${x.number} · ${x.customerName}`, sub: `${x.status} · ${x.itemsText}`, href: `/sales/orders/${x.id}` }))));
     if (can('purchase')) jobs.push(api(`/purchase-orders?search=${s}&pageSize=4`).then((r) => r.rows.map((x: any) => ({ group: 'Purchase orders', title: `${x.number} · ${x.vendorName}`, sub: `${x.status} · ${x.itemsText}`, href: `/purchase/orders/${x.id}` }))));
-    if (can('pbills')) jobs.push(api(`/purchase-bills?search=${s}&pageSize=3`).then((r) => r.rows.map((x: any) => ({ group: 'Purchase bills', title: `${x.number} · ${x.vendorName}`, sub: `${x.status} · invoice ${x.vendorInvoiceNo}`, href: `/purchase/bills/${x.id}` }))));
-    if (can('hr')) jobs.push(api(`/hr/employees?search=${s}&pageSize=3`).then((r) => r.rows.map((x: any) => ({ group: 'Employees', title: `${x.name} · ${x.code}`, sub: `${x.designation || ''} · ${x.department || ''}`, href: `/hr?employee=${x.id}` }))));
-    if (can('docs')) jobs.push(api(`/documents?search=${s}&pageSize=3`).then((r) => r.rows.map((x: any) => ({ group: 'Documents', title: x.fileName, sub: `${x.docType}${x.entityNo ? ' · ' + x.entityNo : ''}`, href: `/documents/${x.id}` }))));
-    if (can('customers')) jobs.push(api(`/customers?search=${s}&pageSize=3`).then((r) => r.rows.map((x: any) => ({ group: 'Customers', title: x.name, sub: `${x.code} · ${x.city || ''}`, href: `/sales/customers?focus=${x.id}` }))));
+    if (can('hr')) jobs.push(api(`/hr/employees?search=${s}&pageSize=3`).then((r) => r.rows.map((x: any) => ({ group: 'Employees', title: `${x.name} · ${x.code}`, sub: `${x.designation || ''} · ${x.department || ''}`, href: `/masters/employees?employee=${x.id}` }))));
     Promise.all(jobs.map((j) => j.catch(() => []))).then((all) => { if (live) { setHits(all.flat()); setSel(0); } });
     return () => { live = false; };
   }, [term, can]);

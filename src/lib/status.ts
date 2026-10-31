@@ -5,7 +5,7 @@ const MAP: Record<string, Record<string, Tone>> = {
   so: { Received: 'info', 'Credit hold': 'danger', 'Credit OK': 'teal', Quoted: 'purple', Confirmed: 'info', Released: 'warning', Dispatched: 'teal', Invoiced: 'purple', Closed: 'success', Cancelled: 'neutral' },
   po: { Draft: 'neutral', 'Pending approval': 'warning', Approved: 'info', Sent: 'purple', Acknowledged: 'teal', 'Partially received': 'warning', Received: 'success', Billed: 'success', Cancelled: 'neutral' },
   // Work order status colours (same on every Industrial screen)
-  wo: { Planned: 'neutral', Released: 'info', 'In Progress': 'warning', 'On Hold': 'purple', Completed: 'success', Closed: 'teal' },
+  wo: { Planned: 'neutral', Released: 'info', 'In Progress': 'warning', 'On Hold': 'purple', 'In Assembly': 'info', Completed: 'success', Closed: 'teal' },
   grn: { 'Pending QC': 'warning', Accepted: 'success', 'Partially accepted': 'warning', Rejected: 'danger' },
   lot: { Pending: 'warning', 'In progress': 'info', Accepted: 'success', 'Accepted w/ deviation': 'teal', 'Partially accepted': 'warning', Rejected: 'danger' },
   ncr: { Open: 'danger', Closed: 'success', Pending: 'warning', Rework: 'info', Scrap: 'danger', 'Use as is': 'teal', 'Return to vendor': 'purple' },

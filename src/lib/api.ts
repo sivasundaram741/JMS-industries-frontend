@@ -69,6 +69,7 @@ export const get = <T = any>(path: string) => api<T>(path);
 export const post = <T = any>(path: string, body: unknown = {}) => api<T>(path, { method: 'POST', body });
 export const put = <T = any>(path: string, body: unknown = {}) => api<T>(path, { method: 'PUT', body });
 export const patch = <T = any>(path: string, body: unknown = {}) => api<T>(path, { method: 'PATCH', body });
+export const del = <T = any>(path: string) => api<T>(path, { method: 'DELETE' });
 export const fetcher = (path: string) => api(path);
 
 // '?a=1&b=x' from an object, skipping empty values

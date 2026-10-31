@@ -1,6 +1,6 @@
 'use client';
 // Attachments card for any detail page: files linked to the record, what its document rule still needs, and Attach.
-// Everything here is also listed in Overview · Document Tracking.
+// Files attached to one record. Use the download button to open one.
 import { TenantLink as Link } from '@/components/ui/TenantLink';
 import { useState } from 'react';
 import { Download, File, FileArchive, FileImage, FileSpreadsheet, FileText, Paperclip, TriangleAlert } from 'lucide-react';
@@ -46,7 +46,7 @@ export function Attachments({ entityType, entityId, entityNo, title = 'Attachmen
   const canAdd = can('docs', 'create');
 
   return (
-    <Card title={<span className="row" style={{ gap: 8 }}>{title}{data?.rows.length ? <span className="chip">{data.rows.length}</span> : null}</span>} sub="Tracked in Document Tracking"
+    <Card title={<span className="row" style={{ gap: 8 }}>{title}{data?.rows.length ? <span className="chip">{data.rows.length}</span> : null}</span>} sub="Files kept against this record"
       right={canAdd ? <Button size="sm" icon={Paperclip} onClick={() => setOpen({})}>Attach</Button> : null}>
       {!data ? <Loading rows={2} /> : (
         <div className="stack tight" style={{ gap: 10 }}>
@@ -70,10 +70,10 @@ export function Attachments({ entityType, entityId, entityNo, title = 'Attachmen
                 return (
                   <div key={d.id} className="li">
                     <span className="icon-tile t-info" style={{ width: 32, height: 32 }}><I size={16} /></span>
-                    <Link href={`/documents/${d.id}`} style={{ flex: 1, minWidth: 0, color: 'inherit', textDecoration: 'none' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="lt truncate">{d.fileName}</div>
                       <div className="ls truncate">{d.docType} · {fileSize(d.sizeBytes)} · v{d.version} · {dateShort(d.createdAt)}</div>
-                    </Link>
+                    </div>
                     <StatusBadge kind="doc" status={docStatus(d)} />
                     <button type="button" className="icon-btn" aria-label={`Download ${d.fileName}`} onClick={() => downloadDocument(d.id, d.fileName).catch(toast.err)}><Download size={16} /></button>
                   </div>
@@ -81,7 +81,6 @@ export function Attachments({ entityType, entityId, entityNo, title = 'Attachmen
               })}
             </div>
           ) : !data.missing.length ? <div className="empty text-sm">No files attached yet</div> : null}
-          {data.rows.length ? <Link href={`/documents?entityType=${entityType}&entityId=${entityId}`} className="text-sm" style={{ color: 'var(--text-link)' }}>View all in Document Tracking</Link> : null}
         </div>
       )}
       <UploadModal open={!!open} onClose={() => setOpen(null)} onDone={() => mutate()} entityType={entityType} entityId={entityId} entityNo={entityNo} docType={open?.docType} />

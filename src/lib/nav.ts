@@ -1,97 +1,112 @@
-// Sidebar and stage ribbon: the Manufacturing Flow design's 7 stages (Sales → Purchase → Warehouse → Production →
-// Quality → Dispatch → Finance). Each item names the permission module that decides whether a role sees it.
+// The menu follows the way a job actually moves through this shop:
+//
+//   Masters → Work Order ─┬─ needs outsourcing → Purchase order ─┐
+//                         └─ all made here ─────────────────────┴→ Production → Assembly → QC
+//
+// Stock is not a screen of its own: opening balances and adjustments live on the
+// Masters page, beside the items they belong to. Each work order also carries its own
+// route card — its path through these steps — so the steps here are the shop-wide queues.
+//
+// Three lists, three different questions:
+//   MENU   — what the sidebar shows (MENU_TOP, then the ROUTE_MENU stops, then MENU_END)
+//   ROUTES — which permission module a page belongs to (every page, menu or not)
+//   STAGES — the steps in order, with a one-line explanation (Users & roles uses them)
 import type { LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard, Activity, CircleCheck, ShoppingCart, Contact, Receipt, Truck, Building2, Warehouse, PackagePlus, Layers,
-  ClipboardList, Factory, ClipboardCheck, ShieldCheck, Send, Landmark, Database, Users, ChartColumn, FolderOpen, FileText,
-  FileMinus, Undo2, Barcode, FilePlus2, FileX2, IdCard, Settings, PenLine, BarChart3,
+  BarChart3, Boxes, ClipboardCheck, ClipboardList, Database, Factory, Hammer, LayoutDashboard,
+  NotebookPen, Settings, ShieldCheck, ShoppingCart,
 } from 'lucide-react';
 import type { Tone } from './status';
 
-// alt: other modules whose users may also open pages under this menu (e.g. an invoice opened from Invoicing & Payments)
-export interface NavItem { key: string; label: string; href: string; icon: LucideIcon; module: string; alt?: string[]; managerOnly?: boolean }
-export interface NavSection { key: string; label: string; icon: LucideIcon; stage?: number; short?: string; sub?: string; desc?: string; tone?: Tone; items: NavItem[] }
+export interface NavItem {
+  key: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  module: string;
+  /** Other modules whose users may also open this page. */
+  alt?: string[];
+  /** A word after the label, e.g. "if needed" on the optional step. */
+  hint?: string;
+}
 
-export const OVERVIEW: NavSection = {
-  key: 'overview', label: 'Overview', icon: LayoutDashboard, items: [
-    { key: 'home', label: 'Dashboard', href: '/', icon: LayoutDashboard, module: 'home' },
-    { key: 'track', label: 'Tracking Center', href: '/tracking', icon: Activity, module: 'track' },
-    { key: 'docs', label: 'Document Tracking', href: '/documents', icon: FolderOpen, module: 'docs' },
-    { key: 'approvals', label: 'Approvals', href: '/approvals', icon: CircleCheck, module: 'approvals' },
-  ],
-};
-
-export const SECTIONS: NavSection[] = [
-  { key: 'sales', label: 'Sales', sub: 'customer orders', short: 'Sales', stage: 1, tone: 'info', icon: ShoppingCart,
-    desc: 'Receive customer orders · check credit · confirm and release to production', items: [
-    { key: 'sales', label: 'Customer Orders', href: '/sales/orders', icon: ShoppingCart, module: 'sales' },
-    { key: 'customers', label: 'Customers', href: '/sales/customers', icon: Contact, module: 'customers' },
-  ] },
-  { key: 'purchase', label: 'Purchase', sub: 'orders & bills', short: 'Purchase', stage: 2, tone: 'teal', icon: Receipt,
-    desc: 'Raise purchase orders · receive goods (GRN) · record vendor bills', items: [
-    { key: 'purchase', label: 'Purchase Orders', href: '/purchase/orders', icon: Receipt, module: 'purchase' },
-    { key: 'subcon', label: 'Subcontracting', href: '/purchase/subcontracting', icon: Truck, module: 'subcon' },
-    { key: 'pbills', label: 'Purchase Bills', href: '/purchase/bills', icon: FileText, module: 'pbills', alt: ['purchase', 'finance'] },
-    { key: 'debitinv', label: 'Debit Invoices', href: '/purchase/debit-notes', icon: FileMinus, module: 'debitinv' },
-    { key: 'vendors', label: 'Vendors', href: '/purchase/vendors', icon: Building2, module: 'vendors' },
-  ] },
-  { key: 'store', label: 'Warehouse', sub: 'stock & GRN', short: 'Warehouse', stage: 3, tone: 'warning', icon: Warehouse,
-    desc: 'Track stock levels · receive goods into store · handle returns and transfers', items: [
-    { key: 'inventory', label: 'Stock Overview', href: '/warehouse/stock', icon: Warehouse, module: 'inventory' },
-    { key: 'stockentry', label: 'GRN & Stock Entry', href: '/warehouse/grn', icon: PackagePlus, module: 'stockentry' },
-    { key: 'batches', label: 'Batch & Lot Stock', href: '/warehouse/lots', icon: Layers, module: 'batches' },
-    { key: 'stockreturns', label: 'Stock Returns', href: '/warehouse/returns', icon: Undo2, module: 'stockreturns' },
-    { key: 'barcode', label: 'Barcode Generator', href: '/warehouse/barcodes', icon: Barcode, module: 'barcode' },
-  ] },
-  { key: 'prod', label: 'Production', sub: 'plan & make', short: 'Production', stage: 4, tone: 'danger', icon: Factory,
-    desc: 'Open work orders · assign machines · record completions on the shop floor', items: [
-    { key: 'wo', label: 'Work Orders', href: '/production/work-orders', icon: ClipboardList, module: 'wo' },
-    { key: 'shopfloor', label: 'Shop Floor', href: '/production/shop-floor', icon: Factory, module: 'shopfloor' },
-  ] },
-  { key: 'quality', label: 'Quality', sub: 'inspect & NCR', short: 'Quality', stage: 5, tone: 'neutral', icon: ShieldCheck,
-    desc: 'Run inspections at incoming, in-process and final stages · raise NCRs for rejections', items: [
-    { key: 'quality', label: 'Inspections & NCR', href: '/quality', icon: ClipboardCheck, module: 'quality' },
-  ] },
-  { key: 'dispatch', label: 'Dispatch', sub: 'delivery notes', short: 'Dispatch', stage: 6, tone: 'info', icon: Truck,
-    desc: 'Pick and pack finished goods · create delivery notes · record outward shipments', items: [
-    { key: 'dispatch', label: 'Dispatch & Delivery', href: '/dispatch', icon: Send, module: 'dispatch' },
-  ] },
-  { key: 'finance', label: 'Finance', sub: 'invoices', short: 'Finance', stage: 7, tone: 'teal', icon: Landmark,
-    desc: 'Raise customer invoices · record payments · close the order-to-cash cycle', items: [
-    { key: 'finance', label: 'Invoicing & Payments', href: '/finance', icon: Landmark, module: 'finance' },
-    { key: 'billing', label: 'Sales Invoices', href: '/finance/invoices', icon: FilePlus2, module: 'billing', alt: ['finance', 'creditinv'] },
-    { key: 'creditinv', label: 'Credit Invoices', href: '/finance/credit-notes', icon: FileX2, module: 'creditinv' },
-  ] },
-  { key: 'entries', label: 'Entries', icon: PenLine,
-    desc: 'Log daily production output — select a work order, operation and record pieces made', items: [
-    { key: 'entries-prod', label: 'Production Log', href: '/entries/production', icon: PenLine, module: 'wo' },
-  ] },
-  { key: 'analytics', label: 'Analytics', icon: BarChart3,
-    desc: 'Production trends, order pipeline, scrap rates and key performance metrics', items: [
-    { key: 'analytics', label: 'Production & Orders', href: '/analytics', icon: BarChart3, module: 'reports' },
-    { key: 'reports', label: 'Reports', href: '/reports', icon: ChartColumn, module: 'reports' },
-  ] },
-  { key: 'masters', label: 'People & Masters', icon: Users,
-    desc: 'Manage employees, payroll, items, customers, vendors and machines', items: [
-    { key: 'hr', label: 'HR & Payroll', href: '/hr', icon: IdCard, module: 'hr' },
-    { key: 'masters', label: 'Masters', href: '/masters', icon: Database, module: 'masters', alt: ['hr'] },
-  ] },
-  { key: 'admin', label: 'Admin', icon: Settings,
-    desc: 'User roles, permissions and company settings', items: [
-    { key: 'settings', label: 'Settings', href: '/settings', icon: Settings, module: 'settings' },
-  ] },
+/** Top of the sidebar: where the day starts, and the operators' screen. */
+export const MENU_TOP: NavItem[] = [
+  { key: 'home', label: 'Today', href: '/', icon: LayoutDashboard, module: 'home' },
+  { key: 'shopfloor', label: 'Shop floor', href: '/production/shop-floor', icon: Factory, module: 'shopfloor', alt: ['wo'] },
 ];
 
-export const STAGE_SECTIONS = SECTIONS.filter((s) => s.stage);
+/** The route a job takes, in order. The sidebar draws these as stops on one line. */
+export const ROUTE_MENU: NavItem[] = [
+  { key: 'masters', label: 'Masters', href: '/masters', icon: Database, module: 'masters', alt: ['vendors', 'hr', 'inventory'] },
+  { key: 'wo', label: 'Work orders', href: '/production/work-orders', icon: ClipboardList, module: 'wo' },
+  { key: 'buy', label: 'Purchase & job work', href: '/purchase/orders', icon: ShoppingCart, module: 'purchase', alt: ['subcon'], hint: 'if needed' },
+  { key: 'prod-log', label: 'Production', href: '/production/log', icon: NotebookPen, module: 'wo' },
+  { key: 'assembly', label: 'Assembly', href: '/production/assembly', icon: Hammer, module: 'wo' },
+  { key: 'quality', label: 'Quality', href: '/quality', icon: ShieldCheck, module: 'quality', alt: ['wo'] },
+];
 
-// Which menu item a path belongs to (longest matching prefix)
-export function activeItem(pathname: string): { section: NavSection; item: NavItem } | null {
-  let best: { section: NavSection; item: NavItem } | null = null;
-  for (const section of [OVERVIEW, ...SECTIONS]) {
-    for (const item of section.items) {
-      const match = item.href === '/' ? pathname === '/' : pathname === item.href || pathname.startsWith(item.href + '/');
-      if (match && (!best || item.href.length > best.item.href.length)) best = { section, item };
-    }
-  }
+/** Bottom of the sidebar. */
+export const MENU_END: NavItem[] = [
+  { key: 'reports', label: 'Reports', href: '/production/reports', icon: BarChart3, module: 'wo' },
+  { key: 'settings', label: 'Settings', href: '/settings', icon: Settings, module: 'settings' },
+];
+
+export const MENU: NavItem[] = [...MENU_TOP, ...ROUTE_MENU, ...MENU_END];
+
+/** Every page, including the ones with no menu entry of their own. */
+const ROUTES: NavItem[] = [
+  ...MENU,
+  { key: 'jobwork', label: 'Job Work', href: '/purchase/subcontracting', icon: ShoppingCart, module: 'subcon', alt: ['purchase'] },
+  { key: 'vendors', label: 'Vendors', href: '/purchase/vendors', icon: Database, module: 'vendors', alt: ['purchase', 'masters'] },
+  { key: 'stock', label: 'Stock', href: '/warehouse/stock', icon: Boxes, module: 'inventory', alt: ['masters'] },
+  { key: 'grn', label: 'Goods Received', href: '/warehouse/grn', icon: Boxes, module: 'stockentry', alt: ['inventory'] },
+  { key: 'ledger', label: 'Stock Ledger', href: '/warehouse/ledger', icon: Boxes, module: 'inventory', alt: ['masters'] },
+  { key: 'lots', label: 'Lots & Batches', href: '/warehouse/lots', icon: Boxes, module: 'batches', alt: ['inventory'] },
+  { key: 'approvals', label: 'Approvals', href: '/approvals', icon: ClipboardCheck, module: 'approvals' },
+];
+
+/** The flow bar: the route a job takes, in order. Step 3 only applies to the jobs that need it. */
+export interface Stage { key: string; n: number; label: string; sub: string; href: string; tone: Tone; optional?: boolean }
+export const STAGES: Stage[] = [
+  { key: 'masters', n: 1, label: 'Masters', sub: 'set the items, machines and people up first', href: '/masters', tone: 'neutral' },
+  { key: 'wo', n: 2, label: 'Work Order', sub: 'raise the job and say which kind it is', href: '/production/work-orders', tone: 'info' },
+  { key: 'buy', n: 3, label: 'Purchase', sub: 'only if part of it is outsourced', href: '/purchase/orders', tone: 'teal', optional: true },
+  { key: 'prod', n: 4, label: 'Production', sub: 'make it on the shop floor', href: '/production/log', tone: 'danger' },
+  { key: 'assembly', n: 5, label: 'Assembly', sub: 'put it together', href: '/production/assembly', tone: 'warning' },
+  { key: 'qc', n: 6, label: 'QC', sub: 'check it before it goes out', href: '/quality', tone: 'purple' },
+];
+
+const matches = (href: string, pathname: string) =>
+  (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/'));
+
+/** The page this path belongs to — longest matching prefix wins. */
+export function activeItem(pathname: string): NavItem | null {
+  let best: NavItem | null = null;
+  for (const r of ROUTES) if (matches(r.href, pathname) && (!best || r.href.length > best.href.length)) best = r;
   return best;
+}
+
+/** The menu entry to highlight, which may be a parent of the open page. */
+export function activeMenuKey(pathname: string): string | null {
+  let best: NavItem | null = null;
+  for (const m of MENU) if (matches(m.href, pathname) && (!best || m.href.length > best.href.length)) best = m;
+  if (best) return best.key;
+  // Goods received belong to the purchase step; stock, ledger and lots are kept with the masters.
+  if (pathname.startsWith('/warehouse/grn') || pathname.startsWith('/purchase')) return 'buy';
+  if (pathname.startsWith('/warehouse') || pathname.startsWith('/masters')) return 'masters';
+  if (pathname.startsWith('/production')) return 'wo';
+  if (pathname.startsWith('/settings')) return 'settings';
+  return null;
+}
+
+/** The stage the flow bar should mark as current. */
+export function activeStage(pathname: string): string | null {
+  if (pathname.startsWith('/masters') || pathname.startsWith('/warehouse')) return 'masters';
+  if (pathname.startsWith('/purchase')) return 'buy';
+  if (pathname.startsWith('/production/assembly')) return 'assembly';
+  if (pathname.startsWith('/production/log') || pathname.startsWith('/production/shop-floor')) return 'prod';
+  if (pathname.startsWith('/quality')) return 'qc';
+  if (pathname.startsWith('/production')) return 'wo';
+  return null;
 }

@@ -6,8 +6,11 @@ import { EmptyState, Loading } from './layout';
 
 export interface Column<T> { key: string; header: React.ReactNode; align?: 'left' | 'right' | 'center'; width?: number | string; render?: (row: T, i: number) => React.ReactNode }
 
-export function DataTable<T extends Record<string, any>>({ columns, rows, rowHref, onRowClick, loading, empty, footer, toolbar, rowKey = 'id' }: {
-  columns: Column<T>[]; rows?: T[] | null; rowHref?: (row: T) => string | null | undefined; onRowClick?: (row: T) => void; loading?: boolean; empty?: React.ReactNode; footer?: React.ReactNode; toolbar?: React.ReactNode; rowKey?: string;
+export function DataTable<T extends Record<string, any>>({ columns, rows, rowHref, onRowClick, onRowContextMenu, loading, empty, footer, toolbar, rowKey = 'id' }: {
+  columns: Column<T>[]; rows?: T[] | null; rowHref?: (row: T) => string | null | undefined; onRowClick?: (row: T) => void;
+  /** Right-click on a row — e.g. to open its options menu */
+  onRowContextMenu?: (row: T, e: React.MouseEvent) => void;
+  loading?: boolean; empty?: React.ReactNode; footer?: React.ReactNode; toolbar?: React.ReactNode; rowKey?: string;
 }) {
   const router = useRouter();
   const tenantHref = useTenantHref();
@@ -27,7 +30,8 @@ export function DataTable<T extends Record<string, any>>({ columns, rows, rowHre
           </thead>
           <tbody>
             {rows?.map((r, i) => (
-              <tr key={r[rowKey] ?? i} className={clickable && (onRowClick || rowHref?.(r)) ? 'click' : undefined} onClick={clickable ? () => click(r) : undefined}>
+              <tr key={r[rowKey] ?? i} className={[clickable && (onRowClick || rowHref?.(r)) ? 'click' : '', onRowContextMenu ? 'has-menu' : ''].filter(Boolean).join(' ') || undefined}
+                onClick={clickable ? () => click(r) : undefined} onContextMenu={onRowContextMenu ? (e) => onRowContextMenu(r, e) : undefined}>
                 {columns.map((c) => <td key={c.key} className={c.align === 'right' ? 'r num' : undefined} style={{ textAlign: c.align }}>{c.render ? c.render(r, i) : (r[c.key] ?? '—')}</td>)}
               </tr>
             ))}

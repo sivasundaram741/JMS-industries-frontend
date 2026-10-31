@@ -1,12 +1,13 @@
 'use client';
 import { TenantLink as Link } from '@/components/ui/TenantLink';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, CalendarDays, MapPin, Moon, Sun, ChevronDown, CircleCheck } from 'lucide-react';
+import { Bell, CalendarDays, MapPin, Menu, Moon, Sun, ChevronDown, CircleCheck } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 import { financialYear, ago } from '@/lib/format';
 import { ProfileDrawer } from './ProfileDrawer';
 import { applyAppearance, loadAppearance, resolvedTheme, saveAppearance } from '@/lib/appearance';
+import { GlobalSearch } from './GlobalSearch';
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -30,7 +31,7 @@ function useOutside(ref: React.RefObject<HTMLElement | null>, onOut: () => void)
   }, [ref, onOut]);
 }
 
-export function Topbar({ branch, onBranch }: { branch: string; onBranch: (b: string) => void }) {
+export function Topbar({ branch, onBranch, onMenu }: { branch: string; onBranch: (b: string) => void; onMenu?: () => void }) {
   const { user, can } = useAuth();
   const { theme, toggle } = useTheme();
   const [menu, setMenu] = useState<'' | 'bell' | 'branch'>('');
@@ -43,10 +44,10 @@ export function Topbar({ branch, onBranch }: { branch: string; onBranch: (b: str
   return (
     <>
       <header className="topbar">
-        {user?.company.shortName ? (
-          <div className="company-badge">{user.company.shortName}</div>
-        ) : null}
+        <button className="icon-btn outlined menu-btn" onClick={onMenu} aria-label="Open the menu"><Menu size={18} /></button>
+        <GlobalSearch />
         <div className="spacer" />
+
         <div ref={box} className="row" style={{ gap: 8, position: 'relative' }}>
           <div style={{ position: 'relative' }}>
             <button className="pill" onClick={() => setMenu(menu === 'branch' ? '' : 'branch')} aria-haspopup="menu">
@@ -73,7 +74,7 @@ export function Topbar({ branch, onBranch }: { branch: string; onBranch: (b: str
             </button>
             {menu === 'bell' ? (
               <div className="dropdown" style={{ width: 340 }}>
-                <div className="nav-overline"><span>Waiting for approval</span><span>{pending}</span></div>
+                <div className="nav-overline"><span>Waiting for your approval</span><span>{pending}</span></div>
                 {approvals?.rows?.length ? approvals.rows.map((a: any) => (
                   <Link key={a.id} href="/approvals" onClick={() => setMenu('')}>
                     <CircleCheck size={16} className="f-warning" />

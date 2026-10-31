@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 import { date, dateTime, num } from '@/lib/format';
 import { toneOf } from '@/lib/status';
+import { JobLink } from '@/components/JobLink';
 import { ButtonLink, Card, DataTable, ErrorBox, KeyValue, ListItem, Loading, PageHeader, StatStrip, StatusBadge, Two } from '@/components/ui';
 import { Attachments } from '@/components/docs/Attachments';
 
@@ -33,6 +34,7 @@ export default function GrnPage() {
         sub={`${g.vendorName} · against ${g.poNumber} · received ${date(g.receivedDate)}`}
         actions={<ButtonLink href={`/purchase/orders/${g.purchaseOrderId}`} icon={Receipt}>Open {g.poNumber}</ButtonLink>}
       />
+      <JobLink woId={g.workOrderId} role="Received for job" />
       <StatStrip items={[
         { label: 'Received', value: num(qty, 3) },
         { label: 'Accepted', value: num(acc, 3), color: acc ? 'success' : undefined },

@@ -85,3 +85,47 @@ export function rupeesInWords(amount: number) {
   if (n) parts.push(three(n));
   return 'Rupees ' + parts.join(' ') + ' Only';
 }
+
+/* ── Process time ──────────────────────────────────────────────────────────
+ * Operation times are stored in minutes, but a shop floor talks in hours and
+ * days. One day is one 8-hour shift, which is how this plant runs them.
+ */
+export const MIN_PER_HOUR = 60;
+export const MIN_PER_DAY = 8 * 60;
+export type TimeUnit = 'min' | 'h' | 'day';
+
+export const TIME_UNITS: Array<{ value: TimeUnit; label: string; min: number }> = [
+  { value: 'min', label: 'Minutes', min: 1 },
+  { value: 'h', label: 'Hours', min: MIN_PER_HOUR },
+  { value: 'day', label: 'Days (8 h shift)', min: MIN_PER_DAY },
+];
+
+export const toMinutes = (value: number, unit: TimeUnit) =>
+  Math.round(value * (TIME_UNITS.find((u) => u.value === unit)?.min ?? 1) * 1000) / 1000;
+
+export const fromMinutes = (minutes: number, unit: TimeUnit) =>
+  Math.round((minutes / (TIME_UNITS.find((u) => u.value === unit)?.min ?? 1)) * 1000) / 1000;
+
+/** The largest unit that states these minutes without an awkward fraction. */
+export function bestUnit(...minutes: number[]): TimeUnit {
+  const vals = minutes.filter((m) => m > 0);
+  if (!vals.length) return 'min';
+  if (vals.every((m) => m % MIN_PER_DAY === 0)) return 'day';
+  if (vals.every((m) => m % MIN_PER_HOUR === 0)) return 'h';
+  return 'min';
+}
+
+/** "315 min" reads as "5 h 15 min"; a full shift reads as "1 d". */
+export function duration(minutes: number | null | undefined, opts: { short?: boolean } = {}): string {
+  const total = Math.round((Number(minutes) || 0) * 100) / 100;
+  if (total <= 0) return '—';
+  if (total < 1) return `${num(total, 2)} min`;
+  const d = Math.floor(total / MIN_PER_DAY);
+  const h = Math.floor((total - d * MIN_PER_DAY) / MIN_PER_HOUR);
+  const m = Math.round((total - d * MIN_PER_DAY - h * MIN_PER_HOUR) * 100) / 100;
+  const parts: string[] = [];
+  if (d) parts.push(`${d} d`);
+  if (h) parts.push(`${h} h`);
+  if (m) parts.push(`${num(m, m % 1 ? 2 : 0)} min`);
+  return (opts.short ? parts.slice(0, 2) : parts).join(' ');
+}
